@@ -1,7 +1,8 @@
-use serde_json::json;
+use ethers::core::utils::to_checksum;
+use ethers::types::{Address, Signature};
 use worker::*;
-
 mod utils;
+use std::str::FromStr;
 
 fn log_request(req: &Request) {
     console_log!(
@@ -16,40 +17,50 @@ fn log_request(req: &Request) {
 #[event(fetch)]
 pub async fn main(req: Request, env: Env) -> Result<Response> {
     log_request(&req);
-
-    // Optionally, get more helpful error messages written to the console in the case of a panic.
     utils::set_panic_hook();
-
-    // Optionally, use the Router to handle matching endpoints, use ":name" placeholders, or "*name"
-    // catch-alls to match on specific patterns. Alternatively, use `Router::with_data(D)` to
-    // provide arbitrary data that will be accessible in each route via the `ctx.data()` method.
     let router = Router::new();
-
-    // Add as many routes as your Worker needs! Each route will get a `Request` for handling HTTP
-    // functionality and a `RouteContext` which you can use to  and get route parameters and
-    // Environment bindings like KV Stores, Durable Objects, Secrets, and Variables.
     router
-        .get("/", |_, _| Response::ok("Hello from Workers!"))
-        .post_async("/form/:field", |mut req, ctx| async move {
-            if let Some(name) = ctx.param("field") {
-                let form = req.form_data().await?;
-                match form.get(name) {
-                    Some(FormEntry::Field(value)) => {
-                        return Response::from_json(&json!({ name: value }))
-                    }
-                    Some(FormEntry::File(_)) => {
-                        return Response::error("`field` param in form shouldn't be a File", 422);
-                    }
-                    None => return Response::error("Bad Request", 400),
-                }
-            }
-
-            Response::error("Bad Request", 400)
-        })
-        .get("/worker-version", |_, ctx| {
-            let version = ctx.var("WORKERS_RS_VERSION")?.to_string();
+        .get("/api/v0/info", |_, _ctx| {
+            let version = "0.1";
             Response::ok(version)
         })
+        .get(
+            "/api/v0/address/:address/signature/:signature/message/:message",
+            |_req, ctx| {
+                let message = ctx.param("message").unwrap();
+                let signature = Signature::from_str(&ctx.param("signature").unwrap());
+                match signature {
+                    Ok(sig) => {
+                        let address: Address = match ctx.param("address").unwrap().parse() {
+                            Ok(addr) => addr,
+                            Err(_error) => {
+                                return Response::error("Could not parse address", 500);
+                            }
+                        };
+                        let address_ascii = ethers::core::utils::to_checksum(&address, None);
+                        let res = format!(
+                            r#"
+Signature: {:?}
+Message: {}
+Address: {}
+Verified: {:?}
+                        "#,
+                            signature,
+                            message,
+                            address_ascii,
+                            sig.verify(message.clone(), address)
+                        );
+                        return Response::ok(res);
+                    }
+                    Err(error) => {
+                        return Response::error(
+                            format!("Could not parse signature. Error: {}", error),
+                            500,
+                        );
+                    }
+                }
+            },
+        )
         .run(req, env)
         .await
 }

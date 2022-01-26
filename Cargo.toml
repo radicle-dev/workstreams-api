@@ -1,5 +1,5 @@
 [package]
-name = "ws-api"
+name = "workstreams-api"
 version = "0.1.0"
 authors = ["Odysseas Lamtzidis <odyslam@gmail.com>"]
 edition = "2018"
@@ -12,8 +12,11 @@ default = ["console_error_panic_hook"]
 
 [dependencies]
 cfg-if = "0.1.2"
-worker = "0.0.7"
 serde_json = "1.0.67"
+serde = { version = "1.0", features = ["derive"] }
+ethers =  { git = "https://github.com/odyslam/ethers-rs" , branch = "fix/worker-compile", default-features = false }
+worker = "0.0.7"
+
 
 # The `console_error_panic_hook` crate provides better debugging of panics by
 # logging them with `console.error`. This is great for development, but requires
