@@ -1,4 +1,4 @@
-name = "ws-api"
+name = "workstreams-api"
 type = "javascript"
 workers_dev = true
 compatibility_date = "2022-01-21"
