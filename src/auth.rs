@@ -1,6 +1,9 @@
 use serde::{Deserialize, Serialize};
 use worker::*;
 
+mod auth;
+mod types;
+
 #[derive(Deserialize, Serialize)]
 struct AuthRequest {
     message: String,
