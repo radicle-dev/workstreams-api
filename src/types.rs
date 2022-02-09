@@ -1,6 +1,14 @@
-use chrone::Datetime;
+use chrono::Datetime;
 use ethers::types::Address;
+use serde::{Deserialize, Serialize};
 
+#[derive(Deserialize, Serialize)]
+pub struct User {
+    address: Address,
+    pub workstreams: Option<Vec<Workstream>>,
+}
+
+#[derive(Deserialize, Serialize)]
 pub struct Workstream {
     id: String,
     wtype: WorkstreamType,
@@ -12,31 +20,36 @@ pub struct Workstream {
     description: String,
     dripsHub: Address,
     state: WorkstreamState,
-    proposals: Vec<Proposals>,
+    applications: Option<Vec<Application>>,
 }
 
+#[derive(Deserialize, Serialize)]
 pub struct Receiver {
     address: Address,
     payment_rate: u32,
     payment_currency: PaymentCurrency,
 }
 
+#[derive(Deserialize, Serialize)]
 pub enum WorkstreamType {
     Role,
     Grant,
 }
 
+#[derive(Deserialize, Serialize)]
 pub enum PaymentCurrency {
     DAI,
 }
 
+#[derive(Deserialize, Serialize)]
 pub enum WorkstreamState {
     funded,
     open,
     finished,
 }
 
-pub struct applications {
+#[derive(Deserialize, Serialize)]
+pub struct Application {
     id: String,
     description: String,
     workstream_id: String,
@@ -48,6 +61,7 @@ pub struct applications {
     state: ApplicationState,
 }
 
+#[derive(Deserialize, Serialize)]
 pub enum ApplicationState {
     accepted,
     rejected,
