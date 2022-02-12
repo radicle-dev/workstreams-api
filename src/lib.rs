@@ -24,6 +24,9 @@ pub async fn main(req: Request, env: Env, worker_ctx: Context) -> Result<Respons
     log_request(&req);
     utils::set_panic_hook();
     let router = Router::new();
+    if req.path().chars().last() != Some('/') {
+        return Response::redirect(Url::from_str(&format!("{}/", req.url()?))?);
+    }
     router
         .get("/api/v0/info", |req, _ctx| {
             let version = "0.1";
@@ -61,7 +64,6 @@ pub async fn main(req: Request, env: Env, worker_ctx: Context) -> Result<Respons
         )
         .post_async("/users/*user", |req, ctx| async move {
             let addr: Address;
-            Authorization::is_authorized(env: &Env, token: &str, address: H160)
             match Address::from_str(ctx.param("user").unwrap()) {
                 Ok(address) => addr = address,
                 Err(error) => return Response::error("Could not parse address", 502),
