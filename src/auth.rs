@@ -1,17 +1,21 @@
+use ethers::types::{Signature, H160};
+use rand::Rng;
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
+use siwe::Message;
+use std::str::FromStr;
 use worker::*;
 
-mod auth;
-mod types;
-
 #[derive(Deserialize, Serialize)]
-struct AuthRequest {
+// We store the message and signature in String format in plcae of their native structs so that
+// we can easily Serialize and Deserialize
+pub struct AuthRequest {
     message: String,
     signature: String,
 }
 
 #[derive(Deserialize, Serialize)]
-struct Authorization {
+pub struct Authorization {
     resources: Vec<String>,
     issued_at: String,
     expiration_time: Option<String>,
@@ -19,11 +23,8 @@ struct Authorization {
     address: H160,
 }
 
-// We don't implement the `from` trait because of the `async` keyword
-//
-
 impl Authorization {
-    async fn from_req(env: &Env, req: &Request) -> Result<Option<Authorization>> {
+    pub async fn parse_request(env: &Env, req: &Request) -> Result<Option<Authorization>> {
         let headers = req.headers();
         let bearer = headers.get("BEARER")?;
         let cookie = headers.get("AUTH-SIWE")?;
@@ -38,17 +39,32 @@ impl Authorization {
             .await
             .map_err(|error| worker::Error::from(error))
     }
-    async fn is_authorized(env: &Env, req: &Request) -> Result<bool> {
-        match Authorization::from_req(env, req).await? {
-            Some(auth) => Ok(auth.resources.contains(&req.url()?.path().to_string())),
-            None => Err(worker::Error::from("could not find auth object")),
+    pub async fn is_authorized(env: &Env, token: &str, address: H160) -> Result<bool> {
+        let store = env.kv("AUTHENTICATION")?;
+        match store
+            .get(&token)
+            .json::<Authorization>()
+            .await
+            .map_err(|error| worker::Error::from(error))?
+        {
+            Some(auth) => Ok(auth.address == address),
+            None => Err(worker::Error::from("No auth found with supplied token")),
         }
     }
-    async fn create(signature: String, message: Message) -> Result<Authorization> {
-        match message.verify(signature) {
+    // not sure what is the best return for this function
+    pub async fn create(env: &Env, auth: AuthRequest) -> Result<String> {
+        let message: Message =
+            Message::from_str(&auth.message).map_err(|err| worker::Error::from(err.to_string()))?;
+        match message.verify(
+            Signature::from_str(&auth.signature)
+                .map_err(|err| worker::Error::from(err.to_string()))?
+                .into(),
+        ) {
             Ok(_) => {
-                let authentication = ctx.kv("AUTHENTICATION")?;
+                let authentication = env.kv("AUTHENTICATION")?;
                 let mut rng = rand::thread_rng();
+                let message: Message = Message::from_str(&auth.message)
+                    .map_err(|err| worker::Error::from(err.to_string()))?;
                 let mut hasher = Sha256::new();
                 let auth = Authorization {
                     resources: message
@@ -81,28 +97,26 @@ impl Authorization {
                     )
                     .execute()
                     .await?;
-                hash
+                Ok(hash)
             }
-            Err(error) => {
-                return Response::from_json(&json!(
-                        {"verified": false, "error" : format!("{:?}", error) }))
-            }
+            Err(_) => Err(worker::Error::from(
+                "Failed to verify supplied message with signature",
+            )),
         }
     }
 }
 
-#[async_trait]
-impl From<Request> for AuthRequest {
-    async fn from(req: Request) -> Self {
+impl AuthRequest {
+    pub async fn from_req(mut req: Request) -> Result<AuthRequest> {
         let body = req
             .json::<AuthRequest>()
             .await
             .map_err(|error| worker::Error::from(format!("body parsing: {:?}", error)))?;
-        let sig = <[u8; 65]>::from_hex(body.signature.trim_start_matches("0x"))
-            .map_err(|error| worker::Error::from(format!("signature parsing: {:?}", error)))?;
-        let msg: Message = body
-            .message
-            .parse()
-            .map_err(|error| worker::Error::from(format!("siwe message parsing: {:?}", error)))?;
+        let sig: String = body.signature.trim_start_matches("0x").to_owned();
+        let msg: String = body.message;
+        Ok(AuthRequest {
+            message: msg.to_string(),
+            signature: sig,
+        })
     }
 }

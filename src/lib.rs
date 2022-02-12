@@ -1,16 +1,11 @@
-use ethers::core::utils::to_checksum;
-use ethers::types::{Address, Signature, H160};
-use serde::{Deserialize, Serialize};
-use serde_json::json;
-use worker::Response;
-use worker::*;
-mod utils;
 use auth::*;
-use hex::FromHex;
-use rand::Rng;
-use sha2::{Digest, Sha256};
-use siwe::Message;
+use sha2::digest::generic_array::sequence::Lengthen;
 use std::str::FromStr;
+use types::*;
+use worker::*;
+mod auth;
+mod types;
+mod utils;
 
 fn log_request(req: &Request) {
     console_log!(
@@ -26,7 +21,6 @@ fn log_request(req: &Request) {
 pub async fn main(req: Request, env: Env, worker_ctx: Context) -> Result<Response> {
     log_request(&req);
     utils::set_panic_hook();
-    let authorized: bool = Authorization::is_authorized(&env, &req).await?;
     let router = Router::new();
     router
         .get("/api/v0/info", |req, _ctx| {
@@ -34,36 +28,52 @@ pub async fn main(req: Request, env: Env, worker_ctx: Context) -> Result<Respons
             console_log!("{}", req.url()?.path());
             Response::ok(version)
         })
-        .post_async("/authorize", |mut req, ctx| async move {
-                    let auth_req: AuthRequest = AuthRequest::from(req);
-                    let token: String = Authorization::create(auth_req);
-                    let mut headers = Headers::new();
-                    console_log!(
-                        r#"
-########
-New Authorization
-user: {}
-########
-"#,
-                        to_checksum(&H160(message.address), Some(0)),
-                    );
-                    headers.set(
-                        "Set-cookie",
-                        &format!(
-                            "SIWE-AUTH={}; Secure; HttpOnly; SameSite=Lax; Expires={}",
-                            &token,
-                            Date::now().to_string()
-                        ),
-                    )?;
-                    let res =
-                        Response::redirect(worker::Url::from_str("http:/localhost/").unwrap())
+        .get_async(
+            "/users/:user_address/workstreams/*workstream_id",
+            |_req, ctx| async move {
+                let workstream_id = ctx
+                    .param("workstream_id")
+                    .unwrap()
+                    .strip_prefix('/')
+                    .unwrap();
+                let address = ctx.param("user_address").unwrap();
+                console_log!("user: {}, requested workstream: {}", address, workstream_id);
+                return match ctx.kv("USERS")?.get(address).json::<User>().await? {
+                    Some(user) => Response::from_json(
+                        &user
+                            .workstreams
                             .unwrap()
-                            .with_headers(headers);
-                    return Ok(res);
-                }
-
-            }
+                            .into_iter()
+                            .filter(|workstream| {
+                                if workstream_id != "" {
+                                    &workstream.id == workstream_id
+                                } else {
+                                    true
+                                }
+                            })
+                            .collect::<Vec<Workstream>>(),
+                    ),
+                    None => Response::error("User not found", 404),
+                };
+            },
+        )
+        .post_async("/authorize", |req, ctx| async move {
+            let auth_req: AuthRequest = AuthRequest::from_req(req).await?;
+            let token: String = Authorization::create(&ctx.env, auth_req).await?;
+            let mut headers = Headers::new();
+            headers.set(
+                "Set-cookie",
+                &format!(
+                    "SIWE-AUTH={}; Secure; HttpOnly; SameSite=Lax; Expires={}",
+                    &token,
+                    Date::now().to_string()
+                ),
+            )?;
+            let res = Response::redirect(worker::Url::from_str("http:/localhost/").unwrap())
+                .unwrap()
+                .with_headers(headers);
+            return Ok(res);
         })
-        .run(req, worker_env)
+        .run(req, env)
         .await
 }
