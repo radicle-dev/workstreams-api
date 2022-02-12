@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize, Serialize)]
 pub struct User {
-    address: Address,
+    pub address: Address,
     pub workstreams: Option<Vec<Workstream>>,
 }
 
