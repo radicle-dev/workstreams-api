@@ -1,4 +1,6 @@
 use auth::*;
+use ethers::types::Address;
+use serde_json::to_string;
 use sha2::digest::generic_array::sequence::Lengthen;
 use std::str::FromStr;
 use types::*;
@@ -57,6 +59,23 @@ pub async fn main(req: Request, env: Env, worker_ctx: Context) -> Result<Respons
                 };
             },
         )
+        .post_async("/users/*user", |req, ctx| async move {
+            let addr: Address;
+            Authorization::is_authorized(env: &Env, token: &str, address: H160)
+            match Address::from_str(ctx.param("user").unwrap()) {
+                Ok(address) => addr = address,
+                Err(error) => return Response::error("Could not parse address", 502),
+            }
+            let user = User {
+                address: addr,
+                workstreams: None,
+            };
+            let store = ctx.kv("USERS")?;
+            let value = serde_json::to_string(&user).map_err(|err| worker::Error::from(err))?;
+            let key = ctx.param("user").unwrap();
+            store.put(key, value);
+            return Response::ok("user created");
+        })
         .post_async("/authorize", |req, ctx| async move {
             let auth_req: AuthRequest = AuthRequest::from_req(req).await?;
             let token: String = Authorization::create(&ctx.env, auth_req).await?;
