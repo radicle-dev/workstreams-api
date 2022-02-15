@@ -64,9 +64,14 @@ pub async fn main(req: Request, env: Env, worker_ctx: Context) -> Result<Respons
         )
         .post_async("/users/*user", |req, ctx| async move {
             let addr: Address;
+            let token = Authorization::parse_request(req)?;
+            let auth = Authorization::get(ctx.env, token).await?;
             match Address::from_str(ctx.param("user").unwrap()) {
                 Ok(address) => addr = address,
                 Err(error) => return Response::error("Could not parse address", 502),
+            }
+            if auth.address != addr {
+                return Response::error("not authorized");
             }
             let user = User {
                 address: addr,

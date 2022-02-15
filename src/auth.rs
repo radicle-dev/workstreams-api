@@ -23,33 +23,27 @@ pub struct Authorization {
     address: H160,
 }
 
+
 impl Authorization {
-    pub async fn parse_request(env: &Env, req: &Request) -> Result<Option<Authorization>> {
+    pub async fn parse_request(req: &Request) -> Result<Authorization>> {
         let headers = req.headers();
         let bearer = headers.get("BEARER")?;
         let cookie = headers.get("AUTH-SIWE")?;
-        let token = match bearer.or(cookie) {
-            Some(token) => token,
+        match bearer.or(cookie) {
+            Some(token) => Ok(token),
             None => return Err(worker::Error::from("no authorization header found")),
         };
+    }
+    pub async fn get<T>(env: &Env, token: T) -> Result<Authorization>
+    where
+        T: Into<String>,
+    {
         let store = env.kv("AUTHENTICATION")?;
         store
             .get(&token)
             .json::<Authorization>()
             .await
             .map_err(|error| worker::Error::from(error))
-    }
-    pub async fn is_authorized(env: &Env, token: &str, address: H160) -> Result<bool> {
-        let store = env.kv("AUTHENTICATION")?;
-        match store
-            .get(&token)
-            .json::<Authorization>()
-            .await
-            .map_err(|error| worker::Error::from(error))?
-        {
-            Some(auth) => Ok(auth.address == address),
-            None => Err(worker::Error::from("No auth found with supplied token")),
-        }
     }
     // not sure what is the best return for this function
     pub async fn create(env: &Env, auth: AuthRequest) -> Result<String> {
