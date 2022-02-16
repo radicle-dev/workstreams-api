@@ -1,7 +1,6 @@
-use auth::*;
+use auth::{AuthRequest, Authorization};
+use ethers::core::utils::to_checksum;
 use ethers::types::Address;
-use serde_json::to_string;
-use sha2::digest::generic_array::sequence::Lengthen;
 use std::str::FromStr;
 use types::*;
 use worker::*;
@@ -62,25 +61,52 @@ pub async fn main(req: Request, env: Env, worker_ctx: Context) -> Result<Respons
                 };
             },
         )
-        .post_async("/users/*user", |req, ctx| async move {
-            let addr: Address;
-            let token = Authorization::parse_request(req)?;
-            let auth = Authorization::get(ctx.env, token).await?;
-            match Address::from_str(ctx.param("user").unwrap()) {
-                Ok(address) => addr = address,
-                Err(error) => return Response::error("Could not parse address", 502),
+        .post_async("/users/:user/workstreams", |mut req, ctx| async move {
+            let token = auth::Authorization::parse_request(&req).await?;
+            let auth = match auth::Authorization::get(&ctx.env, token).await? {
+                Some(authorization) => authorization,
+                None => return Response::error("No authorization found", 401),
+            };
+            let addr = match Address::from_str(ctx.param("user").unwrap()) {
+                Ok(address) => address,
+                Err(_) => return Response::error("Could not parse address", 502),
+            };
+            if addr != auth.address {
+                return Response::error("Unauthorized user to create workstream", 401);
             }
-            if auth.address != addr {
-                return Response::error("not authorized");
+            let addr_string = to_checksum(&addr, Some(1));
+            let workstream: Workstream = req.json::<Workstream>().await?;
+            let store = ctx.kv("WORKSTREAMS")?;
+            let mut workstreams = store.get(&addr_string).json::<Vec<Workstream>>().await?;
+            if let Some(ref mut workstreams) = workstreams {
+                let _ = &workstreams.push(workstream);
+            } else {
+                workstreams = Some(vec![workstream]);
+            }
+            store.put(&addr_string, workstreams)?;
+            Response::ok("workstream created")
+        })
+        .post_async("/users/*user", |req, ctx| async move {
+            let token = auth::Authorization::parse_request(&req).await?;
+            let auth = match auth::Authorization::get(&ctx.env, token).await? {
+                Some(authorization) => authorization,
+                None => return Response::error("No authorization found", 401),
+            };
+            let addr = match Address::from_str(ctx.param("user").unwrap()) {
+                Ok(address) => address,
+                Err(_) => return Response::error("Could not parse address", 502),
+            };
+            if addr != auth.address {
+                return Response::error("Unauthorized user to create workstream", 401);
             }
             let user = User {
                 address: addr,
                 workstreams: None,
             };
-            let store = ctx.kv("USERS")?;
+            let store = ctx.kv("USER")?;
             let value = serde_json::to_string(&user).map_err(|err| worker::Error::from(err))?;
             let key = ctx.param("user").unwrap();
-            store.put(key, value);
+            store.put(key, value)?;
             return Response::ok("user created");
         })
         .post_async("/authorize", |req, ctx| async move {

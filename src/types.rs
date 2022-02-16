@@ -11,7 +11,7 @@ pub struct User {
 pub struct Workstream {
     pub id: String,
     wtype: WorkstreamType,
-    creator: Address,
+    pub creator: Address,
     created_at: String,
     starting_at: Option<String>,
     ending_at: Option<String>,

@@ -20,27 +20,26 @@ pub struct Authorization {
     issued_at: String,
     expiration_time: Option<String>,
     not_before: Option<String>,
-    address: H160,
+    pub address: H160,
 }
 
-
 impl Authorization {
-    pub async fn parse_request(req: &Request) -> Result<Authorization>> {
+    pub async fn parse_request(req: &Request) -> Result<String> {
         let headers = req.headers();
         let bearer = headers.get("BEARER")?;
         let cookie = headers.get("AUTH-SIWE")?;
         match bearer.or(cookie) {
             Some(token) => Ok(token),
             None => return Err(worker::Error::from("no authorization header found")),
-        };
+        }
     }
-    pub async fn get<T>(env: &Env, token: T) -> Result<Authorization>
+    pub async fn get<T>(env: &Env, token: T) -> Result<Option<Authorization>>
     where
         T: Into<String>,
     {
         let store = env.kv("AUTHENTICATION")?;
         store
-            .get(&token)
+            .get(&token.into())
             .json::<Authorization>()
             .await
             .map_err(|error| worker::Error::from(error))
