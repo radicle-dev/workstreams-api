@@ -1,11 +1,12 @@
 use auth::{AuthRequest, Authorization};
-use core::time;
-use ethers::core::utils::to_checksum;
 use ethers::types::Address;
+use std::collections::HashMap;
 use std::str::FromStr;
+use users::User;
 use worker::*;
-use workstreams::*;
+use workstreams::Workstream;
 mod auth;
+mod users;
 mod utils;
 mod workstreams;
 fn log_request(req: &Request) {
@@ -53,20 +54,7 @@ pub async fn main(req: Request, env: Env, worker_ctx: Context) -> Result<Respons
                 let address = ctx.param("user_address").unwrap();
                 console_log!("user: {}, requested workstream: {}", address, workstream_id);
                 return match ctx.kv("USERS")?.get(address).json::<User>().await? {
-                    Some(user) => Response::from_json(
-                        &user
-                            .workstreams
-                            .unwrap()
-                            .into_iter()
-                            .filter(|workstream| {
-                                if workstream_id != "" {
-                                    &workstream.id == workstream_id
-                                } else {
-                                    true
-                                }
-                            })
-                            .collect::<Vec<Workstream>>(),
-                    ),
+                    Some(user) => Response::from_json(&user.workstreams.get(workstream_id)),
                     None => Response::error("User not found", 404),
                 };
             },
@@ -77,16 +65,17 @@ pub async fn main(req: Request, env: Env, worker_ctx: Context) -> Result<Respons
             }
             let addr_string = ctx.param("user").unwrap();
             let mut workstream: Workstream = req.json::<Workstream>().await?;
-            Workstream::populate(&mut workstream, addr_string, &ctx.env);
-            let store = ctx.kv("WORKSTREAMS")?;
-            // if the workstreams object is malformed, it will fail
-            let mut workstreams = store.get(&addr_string).json::<Vec<Workstream>>().await?;
-            if let Some(ref mut workstreams) = workstreams {
-                let _ = &workstreams.push(workstream);
+            Workstream::populate(&mut workstream, addr_string, &ctx.env).await?;
+            let store = ctx.kv("USERS")?;
+            let mut user = if let Some(user) = store.get(&addr_string).json::<User>().await? {
+                user
             } else {
-                workstreams = Some(vec![workstream]);
-            }
-            store.put(&addr_string, workstreams)?;
+                User {
+                    workstreams: HashMap::new(),
+                }
+            };
+            user.workstreams.insert(workstream.id.clone(), workstream);
+            store.put(&addr_string, user)?;
             Response::ok("workstream created")
         })
         .post_async("/authorize/", |req, ctx| async move {

@@ -1,6 +1,5 @@
 use ethers::types::Address;
 use serde::{Deserialize, Serialize};
-use std::str::FromStr;
 use uuid::Uuid;
 use worker::{wasm_bindgen::UnwrapThrowExt, Date, DateInit, Env, Error};
 #[derive(Deserialize, Serialize)]
@@ -50,7 +49,7 @@ pub enum ApplicationState {
 
 #[derive(Deserialize, Serialize)]
 pub struct Workstream {
-    id: String,
+    pub id: String,
     wtype: WorkstreamType,
     creator: String,
     created_at: String,
@@ -86,12 +85,7 @@ impl Workstream {
             }
         };
         if let Some(end) = &workstream.ending_at {
-            if Date::from(DateInit::String(
-                workstream.starting_at.clone().unwrap_throw(),
-            ))
-            .as_millis()
-                < Date::now().as_millis()
-            {
+            if Date::from(DateInit::String(end.to_string())).as_millis() < Date::now().as_millis() {
                 return Err(Error::from("incorrect ending date"));
             }
         };
