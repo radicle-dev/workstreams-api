@@ -1,13 +1,13 @@
 use auth::{AuthRequest, Authorization};
+use core::time;
 use ethers::core::utils::to_checksum;
 use ethers::types::Address;
 use std::str::FromStr;
-use types::*;
 use worker::*;
+use workstreams::*;
 mod auth;
-mod types;
 mod utils;
-
+mod workstreams;
 fn log_request(req: &Request) {
     console_log!(
         "{} - [{}], located at: {:?}, within: {}",
@@ -37,7 +37,7 @@ pub async fn main(req: Request, env: Env, worker_ctx: Context) -> Result<Respons
         return Response::redirect(Url::from_str(&format!("{}/", req.url()?))?);
     }
     router
-        .get("/api/v0/info", |req, _ctx| {
+        .get("/api/v0/info/", |req, _ctx| {
             let version = "0.1";
             console_log!("{}", req.url()?.path());
             Response::ok(version)
@@ -76,7 +76,8 @@ pub async fn main(req: Request, env: Env, worker_ctx: Context) -> Result<Respons
                 return Response::error("Unauthorized", 401);
             }
             let addr_string = ctx.param("user").unwrap();
-            let workstream: Workstream = req.json::<Workstream>().await?;
+            let mut workstream: Workstream = req.json::<Workstream>().await?;
+            Workstream::populate(&mut workstream, addr_string, &ctx.env);
             let store = ctx.kv("WORKSTREAMS")?;
             // if the workstreams object is malformed, it will fail
             let mut workstreams = store.get(&addr_string).json::<Vec<Workstream>>().await?;
@@ -88,7 +89,7 @@ pub async fn main(req: Request, env: Env, worker_ctx: Context) -> Result<Respons
             store.put(&addr_string, workstreams)?;
             Response::ok("workstream created")
         })
-        .post_async("/authorize", |req, ctx| async move {
+        .post_async("/authorize/", |req, ctx| async move {
             let auth_req: AuthRequest = AuthRequest::from_req(req).await?;
             let token: String = Authorization::create(&ctx.env, auth_req).await?;
             let mut headers = Headers::new();
@@ -100,7 +101,7 @@ pub async fn main(req: Request, env: Env, worker_ctx: Context) -> Result<Respons
                     Date::now().to_string()
                 ),
             )?;
-            let res = Response::redirect(worker::Url::from_str("http:/localhost/").unwrap())
+            let res = Response::ok("authorization created")
                 .unwrap()
                 .with_headers(headers);
             return Ok(res);

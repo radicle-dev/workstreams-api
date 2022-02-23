@@ -3173,6 +3173,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "cfg-if 0.1.10",
+ "chrono",
  "console_error_panic_hook",
  "ethers",
  "hex",
@@ -3183,6 +3184,7 @@ dependencies = [
  "sha2 0.10.1",
  "siwe",
  "thiserror",
+ "uuid",
  "worker",
 ]
 
