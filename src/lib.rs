@@ -54,7 +54,13 @@ pub async fn main(req: Request, env: Env, worker_ctx: Context) -> Result<Respons
                 let address = ctx.param("user_address").unwrap();
                 console_log!("user: {}, requested workstream: {}", address, workstream_id);
                 return match ctx.kv("USERS")?.get(address).json::<User>().await? {
-                    Some(user) => Response::from_json(&user.workstreams.get(workstream_id)),
+                    Some(user) => {
+                        if workstream_id.is_empty() {
+                            Response::from_json(&user.workstreams)
+                        } else {
+                            Response::from_json(&user.workstreams.get(workstream_id))
+                        }
+                    }
                     None => Response::error("User not found", 404),
                 };
             },
