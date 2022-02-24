@@ -30,7 +30,7 @@ impl Authorization {
         let cookie = headers.get("AUTH-SIWE")?;
         match bearer.or(cookie) {
             Some(token) => Ok(token),
-            None => return Err(worker::Error::from("no authorization header found")),
+            None => Err(worker::Error::from("no authorization header found")),
         }
     }
     pub async fn get<T>(env: &Env, token: T) -> Result<Option<Authorization>>
@@ -42,7 +42,7 @@ impl Authorization {
             .get(&token.into())
             .json::<Authorization>()
             .await
-            .map_err(|error| worker::Error::from(error))
+            .map_err(worker::Error::from)
     }
     // not sure what is the best return for this function
     pub async fn create(env: &Env, auth: AuthRequest) -> Result<String> {
@@ -108,7 +108,7 @@ impl AuthRequest {
         let sig: String = body.signature.trim_start_matches("0x").to_owned();
         let msg: String = body.message;
         Ok(AuthRequest {
-            message: msg.to_string(),
+            message: msg,
             signature: sig,
         })
     }

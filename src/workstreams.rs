@@ -12,7 +12,7 @@ pub enum WorkstreamType {
 
 #[derive(Debug, Deserialize, Serialize, Eq, PartialEq)]
 pub enum PaymentCurrency {
-    DAI,
+    Dai,
 }
 
 #[derive(Debug, Deserialize, Serialize, Eq, PartialEq)]
@@ -101,17 +101,19 @@ impl Workstream {
         Ok(())
     }
     // check if passed receiver configuration actually exists on-chain
+    // for now, no sanity check is performed
     fn check_drips_config(
-        old_config: &DripsConfig,
-        new_config: &DripsConfig,
+        _old_config: &DripsConfig,
+        _new_config: &DripsConfig,
     ) -> Result<bool, worker::Error> {
         Ok(true)
     }
     // check if dates make sense (e.g created_at is before or at the same time with starting_at)
+    // for now, no sanity check is performed
     fn check_dates(
-        created_at: &String,
-        starting_at: &Option<String>,
-        ending_at: &Option<String>,
+        _created_at: &str,
+        _starting_at: &Option<String>,
+        _ending_at: &Option<String>,
     ) -> Result<bool, worker::Error> {
         Ok(true)
     }
@@ -146,5 +148,4 @@ impl Workstream {
         workstream.applications = None;
         Ok(())
     }
-    pub async fn put(old_workstream: &mut Workstream, new_workstream: &Workstream) {}
 }

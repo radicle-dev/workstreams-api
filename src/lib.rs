@@ -16,7 +16,7 @@ fn log_request(req: &Request) {
         Date::now().to_string(),
         req.path(),
         req.cf().coordinates().unwrap_or_default(),
-        req.cf().region().unwrap_or("unknown region".into())
+        req.cf().region().unwrap_or_else(|| "unknown region".into())
     );
 }
 
@@ -31,11 +31,11 @@ async fn is_authorized(req: &Request, env: &Env, ctx: &RouteContext<()>) -> Resu
     Ok(addr == auth.address)
 }
 #[event(fetch, respond_with_errors)]
-pub async fn main(req: Request, env: Env, worker_ctx: Context) -> Result<Response> {
+pub async fn main(req: Request, env: Env, _worker_ctx: Context) -> Result<Response> {
     log_request(&req);
     utils::set_panic_hook();
     let router = Router::new();
-    if req.path().chars().last() != Some('/') {
+    if req.path().ends_with('/') {
         return Response::redirect(Url::from_str(&format!("{}/", req.url()?))?);
     }
     router
@@ -54,16 +54,16 @@ pub async fn main(req: Request, env: Env, worker_ctx: Context) -> Result<Respons
                     let mut workstream = req.json::<Workstream>().await?;
                     Workstream::populate(&mut workstream, addr_string, &ctx.env).await?;
                     let store = ctx.kv("USERS")?;
-                    let mut user =
-                        if let Some(user) = store.get(&addr_string).json::<User>().await? {
-                            user
-                        } else {
-                            User {
-                                workstreams: HashMap::new(),
-                            }
-                        };
+                    let mut user = if let Some(user) = store.get(addr_string).json::<User>().await?
+                    {
+                        user
+                    } else {
+                        User {
+                            workstreams: HashMap::new(),
+                        }
+                    };
                     user.workstreams.insert(workstream.id.clone(), workstream);
-                    store.put(&addr_string, user)?;
+                    store.put(addr_string, user)?;
                     Response::ok("workstream created")
                 }
                 Method::Get => {
@@ -84,7 +84,7 @@ pub async fn main(req: Request, env: Env, worker_ctx: Context) -> Result<Respons
                     .strip_prefix('/')
                     .unwrap();
                 let addr_string = ctx.param("user").unwrap();
-                let mut workstream: Workstream = req.json::<Workstream>().await?;
+                let workstream: Workstream = req.json::<Workstream>().await?;
                 console_log!(
                     "user: {}, performed action {:?} to workstream id: {} with workstream \n:{:?}",
                     addr_string,
@@ -98,12 +98,12 @@ pub async fn main(req: Request, env: Env, worker_ctx: Context) -> Result<Respons
                             return Response::error("Unauthorized", 401);
                         }
                         let store = ctx.kv("USERS")?;
-                        if let Some(mut user) = store.get(&addr_string).json::<User>().await? {
-                            let mut workstream_old =
+                        if let Some(mut user) = store.get(addr_string).json::<User>().await? {
+                            let workstream_old =
                                 user.workstreams.get_mut(&workstream.id).unwrap_throw();
                             let workstream_new = req.json::<Workstream>().await?;
-                            Workstream::update(&mut workstream_old, workstream_new)?;
-                            store.put(&addr_string, user)?.execute().await?;
+                            Workstream::update(workstream_old, workstream_new)?;
+                            store.put(addr_string, user)?.execute().await?;
                             return Response::ok("workstream updated");
                         }
                         Response::ok("workstream updated")
@@ -133,7 +133,7 @@ pub async fn main(req: Request, env: Env, worker_ctx: Context) -> Result<Respons
             let res = Response::ok("authorization created")
                 .unwrap()
                 .with_headers(headers);
-            return Ok(res);
+            Ok(res)
         })
         .run(req, env)
         .await
