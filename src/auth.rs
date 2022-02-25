@@ -6,15 +6,15 @@ use siwe::Message;
 use std::str::FromStr;
 use worker::*;
 
-#[derive(Deserialize, Serialize)]
 // We store the message and signature in String format in plcae of their native structs so that
 // we can easily Serialize and Deserialize
+#[derive(Deserialize, Serialize, Debug)]
 pub struct AuthRequest {
     message: String,
     signature: String,
 }
 
-#[derive(Deserialize, Serialize)]
+#[derive(Deserialize, Serialize, Debug)]
 pub struct Authorization {
     resources: Vec<String>,
     issued_at: String,

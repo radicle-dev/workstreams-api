@@ -3,6 +3,14 @@ type = "javascript"
 workers_dev = true
 compatibility_date = "2022-01-21"
 
+kv_namespaces = [
+         { binding = "WORKSTREAMS", preview_id = "086a5e6e95f64a6eabfa458674df500e", id = "bda1b95d95d04d6ea724d94621767eb2" },
+         { binding = "AUTHENTICATION", preview_id = "6c6491f706f74707be1a37480aebcab7",  id = "288db243f63644e58501dc070d61a631"  },
+         { binding = "USERS", id = "77df557c87a144359f765fdf1de23941" ,preview_id = "96908c3f2bef49428e9e41725483dae0" },
+         { binding = "DRIPSHUBS", preview_id = "baf42eb52c294a5baf57f7a6569ef918", id = "03bb9d72e89c4605b560cbbdc16c0e03"}
+
+
+]
 [vars]
 WORKERS_RS_VERSION = "0.0.7"
 
@@ -17,6 +25,3 @@ main   = "./shim.mjs"
 [[build.upload.rules]]
 globs = ["**/*.wasm"]
 type  = "CompiledWasm"
-
-# read more about configuring your Worker via wrangler.toml at:
-# https://developers.cloudflare.com/workers/cli-wrangler/configuration

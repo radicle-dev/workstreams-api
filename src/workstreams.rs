@@ -1,28 +1,35 @@
 use ethers::types::Address;
-use ethers::utils::to_checksum;
 use serde::{Deserialize, Serialize};
+use std::fmt::{self, Debug};
+use std::str::FromStr;
 use uuid::Uuid;
-use worker::{wasm_bindgen::UnwrapThrowExt, Date, DateInit, Env, Error};
+use worker::{Date, DateInit, Env, Error};
 
-#[derive(Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
 pub enum WorkstreamType {
     Role,
     Grant,
 }
 
-#[derive(Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
 pub enum PaymentCurrency {
     Dai,
 }
 
-#[derive(Debug, Deserialize, Serialize, Eq, PartialEq)]
+impl fmt::Display for PaymentCurrency {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub enum WorkstreamState {
     Funded,
     Open,
     Finished,
 }
 
-#[derive(Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Application {
     id: String,
     description: String,
@@ -35,22 +42,22 @@ pub struct Application {
     state: ApplicationState,
 }
 
-#[derive(Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Receiver {
     address: Address,
     payment_rate: u32,
-    payment_currency: PaymentCurrency,
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub enum ApplicationState {
     Accepted,
     Rejected,
     Pending,
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Workstream {
+    #[serde(skip_deserializing)]
     pub id: String,
     wtype: WorkstreamType,
     creator: String,
@@ -58,15 +65,19 @@ pub struct Workstream {
     starting_at: Option<String>,
     ending_at: Option<String>,
     description: String,
+    #[serde(flatten)]
     drips_config: DripsConfig,
     state: WorkstreamState,
+    #[serde(flatten)]
     applications: Option<Vec<Application>>,
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct DripsConfig {
     receivers: Vec<Receiver>,
     drips_acct: u32,
+    payment_currency: PaymentCurrency,
+    #[serde(skip_deserializing)]
     drips_hub: Address,
 }
 
@@ -101,7 +112,6 @@ impl Workstream {
         Ok(())
     }
     // check if passed receiver configuration actually exists on-chain
-    // for now, no sanity check is performed
     fn check_drips_config(
         _old_config: &DripsConfig,
         _new_config: &DripsConfig,
@@ -109,7 +119,6 @@ impl Workstream {
         Ok(true)
     }
     // check if dates make sense (e.g created_at is before or at the same time with starting_at)
-    // for now, no sanity check is performed
     fn check_dates(
         _created_at: &str,
         _starting_at: &Option<String>,
@@ -126,14 +135,17 @@ impl Workstream {
         workstream.creator = user.to_owned();
         workstream.state = WorkstreamState::Open;
         workstream.created_at = Date::now().to_string();
-        workstream.drips_config.drips_hub = Address::from_slice(
-            env.kv("DRIPSHUBS")?
-                .get(&to_checksum(&workstream.drips_config.drips_hub, Some(1)))
-                .text()
-                .await?
-                .unwrap_throw()
-                .as_bytes(),
-        );
+        let drips_hub: Option<String> = env
+            .kv("DRIPSHUBS")?
+            .get(&workstream.drips_config.payment_currency.to_string())
+            .text()
+            .await?;
+        if drips_hub == None {
+            return Err(Error::from("no drips hub for given currency"));
+        } else {
+            workstream.drips_config.drips_hub = Address::from_str(&drips_hub.unwrap())
+                .map_err(|err| Error::from(err.to_string()))?;
+        }
         if let Some(start) = &workstream.starting_at {
             if Date::now().as_millis() > Date::from(DateInit::String(start.to_string())).as_millis()
             {

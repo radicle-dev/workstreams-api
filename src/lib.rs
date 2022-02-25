@@ -22,12 +22,15 @@ fn log_request(req: &Request) {
 
 async fn is_authorized(req: &Request, env: &Env, ctx: &RouteContext<()>) -> Result<bool> {
     let token = auth::Authorization::parse_request(req).await?;
+    console_log!("Found token in request: {}", token);
     let auth = match auth::Authorization::get(env, token).await? {
         Some(authorization) => authorization,
         None => return Ok(false),
     };
+    console_log!("Found authorization:\n{:?}", auth);
     let addr = Address::from_str(ctx.param("user").unwrap())
         .map_err(|_| worker::Error::from("Cannot parse address"))?;
+    console_log!("Authorization is tied with user: {}", addr);
     Ok(addr == auth.address)
 }
 #[event(fetch, respond_with_errors)]
@@ -35,9 +38,6 @@ pub async fn main(req: Request, env: Env, _worker_ctx: Context) -> Result<Respon
     log_request(&req);
     utils::set_panic_hook();
     let router = Router::new();
-    if req.path().ends_with('/') {
-        return Response::redirect(Url::from_str(&format!("{}/", req.url()?))?);
-    }
     router
         .get("/api/v0/info/", |req, _ctx| {
             let version = "0.1";
@@ -53,6 +53,7 @@ pub async fn main(req: Request, env: Env, _worker_ctx: Context) -> Result<Respon
                     }
                     let mut workstream = req.json::<Workstream>().await?;
                     Workstream::populate(&mut workstream, addr_string, &ctx.env).await?;
+                    console_log!("New Workstream: \n {:?}", workstream);
                     let store = ctx.kv("USERS")?;
                     let mut user = if let Some(user) = store.get(addr_string).json::<User>().await?
                     {
@@ -62,9 +63,11 @@ pub async fn main(req: Request, env: Env, _worker_ctx: Context) -> Result<Respon
                             workstreams: HashMap::new(),
                         }
                     };
-                    user.workstreams.insert(workstream.id.clone(), workstream);
-                    store.put(addr_string, user)?;
-                    Response::ok("workstream created")
+                    user.workstreams
+                        .insert(workstream.id.clone(), workstream.clone());
+                    console_log!("New user struct: \n {:?}", user);
+                    store.put(addr_string, user)?.execute().await?;
+                    Response::from_json::<Workstream>(&workstream)
                 }
                 Method::Get => {
                     return match ctx.kv("USERS")?.get(addr_string).json::<User>().await? {
@@ -118,7 +121,7 @@ pub async fn main(req: Request, env: Env, _worker_ctx: Context) -> Result<Respon
                 };
             },
         )
-        .post_async("/authorize/", |req, ctx| async move {
+        .post_async("/authorize", |req, ctx| async move {
             let auth_req: AuthRequest = AuthRequest::from_req(req).await?;
             let token: String = Authorization::create(&ctx.env, auth_req).await?;
             let mut headers = Headers::new();
