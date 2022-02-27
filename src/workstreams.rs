@@ -86,6 +86,7 @@ impl Workstream {
         old_workstream: &mut Workstream,
         new_workstream: Workstream,
     ) -> Result<(), worker::Error> {
+        // update drips configuration
         if old_workstream.drips_config != new_workstream.drips_config {
             if !Workstream::check_drips_config(
                 &old_workstream.drips_config,
@@ -95,6 +96,7 @@ impl Workstream {
             }
             old_workstream.drips_config = new_workstream.drips_config;
         }
+        // update dates
         if !Workstream::check_dates(
             &new_workstream.created_at,
             &new_workstream.starting_at,
@@ -109,6 +111,8 @@ impl Workstream {
         // update metadata
         old_workstream.description = new_workstream.description;
         old_workstream.wtype = new_workstream.wtype;
+        // update state
+        old_workstream.state = new_workstream.state;
         Ok(())
     }
     // check if passed receiver configuration actually exists on-chain

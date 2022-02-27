@@ -22,12 +22,10 @@ fn log_request(req: &Request) {
 
 async fn is_authorized(req: &Request, env: &Env, ctx: &RouteContext<()>) -> Result<bool> {
     let token = auth::Authorization::parse_request(req).await?;
-    console_log!("Found token in request: {}", token);
     let auth = match auth::Authorization::get(env, token).await? {
         Some(authorization) => authorization,
         None => return Ok(false),
     };
-    console_log!("Found authorization:\n{:?}", auth);
     let addr = Address::from_str(ctx.param("user").unwrap())
         .map_err(|_| worker::Error::from("Cannot parse address"))?;
     console_log!("Authorization is tied with user: {}", addr);
@@ -81,31 +79,37 @@ pub async fn main(req: Request, env: Env, _worker_ctx: Context) -> Result<Respon
         .on_async(
             "/users/:user/workstreams/:workstream_id",
             |mut req, ctx| async move {
-                let workstream_id = ctx
-                    .param("workstream_id")
-                    .unwrap()
-                    .strip_prefix('/')
-                    .unwrap();
+                let workstream_id = ctx.param("workstream_id").unwrap();
                 let addr_string = ctx.param("user").unwrap();
-                let workstream: Workstream = req.json::<Workstream>().await?;
                 console_log!(
-                    "user: {}, performed action {:?} to workstream id: {} with workstream \n:{:?}",
+                    "user {} requested workstream {} with method: {:?}",
                     addr_string,
-                    req.method(),
                     workstream_id,
-                    workstream
+                    req.method()
                 );
                 return match req.method() {
                     Method::Put => {
                         if !is_authorized(&req, &ctx.env, &ctx).await? {
                             return Response::error("Unauthorized", 401);
                         }
+                        let workstream_new: Workstream = req.json::<Workstream>().await?;
                         let store = ctx.kv("USERS")?;
                         if let Some(mut user) = store.get(addr_string).json::<User>().await? {
-                            let workstream_old =
-                                user.workstreams.get_mut(&workstream.id).unwrap_throw();
-                            let workstream_new = req.json::<Workstream>().await?;
-                            Workstream::update(workstream_old, workstream_new)?;
+                            let workstream_old = user.workstreams.get_mut(workstream_id);
+                            console_log!(
+                                "Editing old workstream \n{:?} \n with:\n{:?}",
+                                workstream_old,
+                                workstream_new
+                            );
+                            match workstream_old {
+                                Some(wk) => {
+                                    Workstream::update(wk, workstream_new.clone())?;
+                                    wk
+                                }
+                                None => {
+                                    return Response::error("Unknown workstream ID", 404);
+                                }
+                            };
                             store.put(addr_string, user)?.execute().await?;
                             return Response::ok("workstream updated");
                         }
