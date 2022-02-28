@@ -3,7 +3,6 @@ use ethers::types::Address;
 use std::collections::HashMap;
 use std::str::FromStr;
 use users::User;
-use worker::wasm_bindgen::UnwrapThrowExt;
 use worker::*;
 use workstreams::Workstream;
 mod auth;
