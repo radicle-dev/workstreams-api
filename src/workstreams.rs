@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt::{self, Debug};
 use std::str::FromStr;
 use uuid::Uuid;
-use worker::{Date, DateInit, Env, Error};
+use worker::{console_log, Date, DateInit, Env, Error};
 
 #[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
 pub enum WorkstreamType {
@@ -139,6 +139,8 @@ impl Workstream {
         workstream.creator = user.to_owned();
         workstream.state = WorkstreamState::Open;
         workstream.created_at = Date::now().to_string();
+        workstream.applications = None;
+        workstream.state = WorkstreamState::Open;
         let drips_hub: Option<String> = env
             .kv("DRIPSHUBS")?
             .get(&workstream.drips_config.payment_currency.to_string())
@@ -151,17 +153,21 @@ impl Workstream {
                 .map_err(|err| Error::from(err.to_string()))?;
         }
         if let Some(start) = &workstream.starting_at {
-            if Date::now().as_millis() > Date::from(DateInit::String(start.to_string())).as_millis()
-            {
+            let starting_date: Date = Date::from(DateInit::String(start.to_string()));
+            if Date::now().as_millis() > starting_date.as_millis() {
                 return Err(Error::from("incorrect starting date"));
+            } else {
+                workstream.starting_at = Some(starting_date.to_string());
             }
         };
         if let Some(end) = &workstream.ending_at {
-            if Date::from(DateInit::String(end.to_string())).as_millis() < Date::now().as_millis() {
+            let ending_date: Date = Date::from(DateInit::String(end.to_string()));
+            if ending_date.as_millis() < Date::now().as_millis() {
                 return Err(Error::from("incorrect ending date"));
+            } else {
+                workstream.ending_at = Some(ending_date.to_string());
             }
         };
-        workstream.applications = None;
         Ok(())
     }
 }

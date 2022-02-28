@@ -9,6 +9,7 @@ mod auth;
 mod users;
 mod utils;
 mod workstreams;
+
 fn log_request(req: &Request) {
     console_log!(
         "{} - [{}], located at: {:?}, within: {}",
