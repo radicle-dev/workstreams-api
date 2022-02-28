@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt::{self, Debug};
 use std::str::FromStr;
 use uuid::Uuid;
-use worker::{console_log, Date, DateInit, Env, Error};
+use worker::{Date, DateInit, Env, Error};
 
 #[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
 pub enum WorkstreamType {
@@ -31,13 +31,14 @@ pub enum WorkstreamState {
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Application {
-    id: String,
+    pub id: String,
     description: String,
     workstream_id: String,
     creator: Address,
+    #[serde(flatten)]
     receivers: Vec<Receiver>,
     created_at: String,
-    starting_at: String,
+    starting_at: Option<String>,
     ending_at: Option<String>,
     state: ApplicationState,
 }
@@ -60,7 +61,7 @@ pub struct Workstream {
     #[serde(skip_deserializing)]
     pub id: String,
     wtype: WorkstreamType,
-    creator: String,
+    creator: Address,
     created_at: String,
     starting_at: Option<String>,
     ending_at: Option<String>,
@@ -97,13 +98,11 @@ impl Workstream {
             old_workstream.drips_config = new_workstream.drips_config;
         }
         // update dates
-        if !Workstream::check_dates(
+        check_dates(
             &new_workstream.created_at,
             &new_workstream.starting_at,
             &new_workstream.ending_at,
-        )? {
-            return Err(worker::Error::from("wrong date format"));
-        }
+        )?;
         // Update time
         old_workstream.created_at = new_workstream.created_at;
         old_workstream.starting_at = new_workstream.starting_at;
@@ -123,24 +122,16 @@ impl Workstream {
         Ok(true)
     }
     // check if dates make sense (e.g created_at is before or at the same time with starting_at)
-    fn check_dates(
-        _created_at: &str,
-        _starting_at: &Option<String>,
-        _ending_at: &Option<String>,
-    ) -> Result<bool, worker::Error> {
-        Ok(true)
-    }
     pub async fn populate(
         workstream: &mut Workstream,
         user: &str,
         env: &Env,
     ) -> Result<(), worker::Error> {
         workstream.id = Uuid::new_v4().to_string();
-        workstream.creator = user.to_owned();
+        workstream.creator = Address::from_str(user).map_err(|err| Error::from(err.to_string()))?;
         workstream.state = WorkstreamState::Open;
         workstream.created_at = Date::now().to_string();
         workstream.applications = None;
-        workstream.state = WorkstreamState::Open;
         let drips_hub: Option<String> = env
             .kv("DRIPSHUBS")?
             .get(&workstream.drips_config.payment_currency.to_string())
@@ -170,4 +161,33 @@ impl Workstream {
         };
         Ok(())
     }
+}
+
+impl Application {
+    pub fn populate(
+        application: &mut Application,
+        user: &str,
+        workstream: &str,
+    ) -> Result<(), worker::Error> {
+        check_dates(
+            &application.created_at,
+            &application.starting_at,
+            &application.ending_at,
+        )?;
+        application.id = Uuid::new_v4().to_string();
+        application.workstream_id = workstream.to_string();
+        application.creator =
+            Address::from_str(user).map_err(|err| Error::from(err.to_string()))?;
+        application.state = ApplicationState::Pending;
+        application.created_at = Date::now().to_string();
+        Ok(())
+    }
+}
+
+fn check_dates(
+    _created_at: &str,
+    _starting_at: &Option<String>,
+    _ending_at: &Option<String>,
+) -> Result<(), worker::Error> {
+    Ok(())
 }

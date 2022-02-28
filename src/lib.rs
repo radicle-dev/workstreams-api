@@ -4,7 +4,8 @@ use std::collections::HashMap;
 use std::str::FromStr;
 use users::User;
 use worker::*;
-use workstreams::Workstream;
+
+use crate::workstreams::{Application, Workstream};
 mod auth;
 mod users;
 mod utils;
@@ -63,7 +64,6 @@ pub async fn main(req: Request, env: Env, _worker_ctx: Context) -> Result<Respon
                     };
                     user.workstreams
                         .insert(workstream.id.clone(), workstream.clone());
-                    console_log!("New user struct: \n {:?}", user);
                     store.put(addr_string, user)?.execute().await?;
                     Response::from_json::<Workstream>(&workstream)
                 }
@@ -118,8 +118,58 @@ pub async fn main(req: Request, env: Env, _worker_ctx: Context) -> Result<Respon
                     Method::Get => {
                         return match ctx.kv("USERS")?.get(addr_string).json::<User>().await? {
                             Some(user) => Response::from_json(&user.workstreams.get(workstream_id)),
-                            None => Response::error("User not found", 404),
+                            None => Response::error("Workstream not found", 404),
                         };
+                    }
+                    _ => Response::error("HTTP Method Not Allowed", 405),
+                };
+            },
+        )
+        .on_async(
+            "/users/:user/workstreams/:workstream/applications",
+            |mut req, ctx| async move {
+                let workstream_id = ctx.param("workstream").unwrap();
+                let user_address = ctx.param("user").unwrap();
+                console_log!(
+                    "user {} requested applications from workstream {} with method: {:?}",
+                    user_address,
+                    workstream_id,
+                    req.method()
+                );
+                return match req.method() {
+                    Method::Post => {
+                        if !is_authorized(&req, &ctx.env, &ctx).await? {
+                            return Response::error("Unauthorized", 401);
+                        }
+                        let store = ctx.kv("APPLICATIONS")?;
+                        let mut application = req.json::<Application>().await?;
+                        let mut applications = if let Some(applications) = store
+                            .get(workstream_id)
+                            .json::<HashMap<String, Application>>()
+                            .await?
+                        {
+                            applications
+                        } else {
+                            HashMap::new()
+                        };
+                        Application::populate(&mut application, user_address, workstream_id)?;
+                        applications.insert(application.id.clone(), application);
+                        store.put(workstream_id, applications)?.execute().await?;
+                        Response::ok("Application added")
+                    }
+                    Method::Put => Response::ok("put method WIP"),
+                    Method::Get => {
+                        return match ctx
+                            .kv("APPLICATIONS")?
+                            .get(user_address)
+                            .json::<HashMap<String, Application>>()
+                            .await?
+                        {
+                            Some(applications) => {
+                                Response::from_json::<HashMap<String, Application>>(&applications)
+                            }
+                            None => Response::error("No applications found for workstream", 404),
+                        }
                     }
                     _ => Response::error("HTTP Method Not Allowed", 405),
                 };
