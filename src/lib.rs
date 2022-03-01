@@ -131,6 +131,52 @@ pub async fn main(req: Request, env: Env, _worker_ctx: Context) -> Result<Respon
                 };
             },
         )
+        .on_async(
+            "/users/:user/workstreams/:workstream/applications/:application",
+            |req, ctx| async move {
+                let workstream = ctx.param("workstream").unwrap();
+                let application_id = ctx.param("application").unwrap();
+                match req.method() {
+                    Method::Get => {
+                        return match ctx
+                            .kv("APPLICATIONS")?
+                            .get(workstream)
+                            .json::<HashMap<String, Application>>()
+                            .await?
+                        {
+                            Some(applications) => match applications.get(application_id) {
+                                Some(application) => {
+                                    Response::from_json::<Application>(application)
+                                }
+                                None => Response::error("Application Not Found", 404),
+                            },
+                            None => {
+                                Response::error("Workstream not found or has no applications", 404)
+                            }
+                        }
+                    }
+                    Method::Delete => {
+                        if !is_authorized(&req, &ctx.env, &ctx).await? {
+                            return Response::error("Unauthorized", 401);
+                        }
+                        let store = ctx.kv("APPLICATIONS")?;
+                        return match store
+                            .get(workstream)
+                            .json::<HashMap<String, Application>>()
+                            .await?
+                        {
+                            Some(mut applications) => {
+                                let res = Response::from_json(&applications.remove(application_id));
+                                store.put(&application_id, applications)?.execute().await?;
+                                res
+                            }
+                            None => Response::error("Application not found", 404),
+                        };
+                    }
+                    _ => Response::error("HTTP Method Not Alloawed", 405),
+                }
+            },
+        )
         .on_async("/users/:user/workstreams", |mut req, ctx| async move {
             let addr_string = ctx.param("user").unwrap();
             return match req.method() {
