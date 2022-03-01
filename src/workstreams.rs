@@ -113,13 +113,8 @@ impl Workstream {
             old_workstream.drips_config = new_workstream.drips_config;
         }
         // update dates
-        check_dates(
-            &new_workstream.created_at,
-            &new_workstream.starting_at,
-            &new_workstream.ending_at,
-        )?;
+        check_dates(&new_workstream.starting_at, &new_workstream.ending_at)?;
         // Update time
-        old_workstream.created_at = new_workstream.created_at;
         old_workstream.starting_at = new_workstream.starting_at;
         old_workstream.ending_at = new_workstream.ending_at;
         // update metadata
@@ -145,6 +140,7 @@ impl Workstream {
         workstream.id = Uuid::new_v4().to_string();
         workstream.creator = Address::from_str(user).map_err(|err| Error::from(err.to_string()))?;
         workstream.state = WorkstreamState::Open;
+        check_dates(&workstream.starting_at, &workstream.ending_at)?;
         workstream.created_at = Date::now().to_string();
         let drips_hub: Option<String> = env
             .kv("DRIPSHUBS")?
@@ -157,22 +153,6 @@ impl Workstream {
             workstream.drips_config.drips_hub = Address::from_str(&drips_hub.unwrap())
                 .map_err(|err| Error::from(err.to_string()))?;
         }
-        if let Some(start) = &workstream.starting_at {
-            let starting_date: Date = Date::from(DateInit::String(start.to_string()));
-            if Date::now().as_millis() > starting_date.as_millis() {
-                return Err(Error::from("incorrect starting date"));
-            } else {
-                workstream.starting_at = Some(starting_date.to_string());
-            }
-        };
-        if let Some(end) = &workstream.ending_at {
-            let ending_date: Date = Date::from(DateInit::String(end.to_string()));
-            if ending_date.as_millis() < Date::now().as_millis() {
-                return Err(Error::from("incorrect ending date"));
-            } else {
-                workstream.ending_at = Some(ending_date.to_string());
-            }
-        };
         Ok(())
     }
 }
@@ -183,11 +163,8 @@ impl Application {
         user: &str,
         workstream: &str,
     ) -> Result<(), worker::Error> {
-        check_dates(
-            &application.created_at,
-            &application.starting_at,
-            &application.ending_at,
-        )?;
+        check_dates(&application.starting_at, &application.ending_at)?;
+        application.created_at = Date::now().to_string();
         application.id = Uuid::new_v4().to_string();
         application.workstream_id = workstream.to_string();
         application.creator =
@@ -201,11 +178,7 @@ impl Application {
         old_application: &Application,
         new_application: &mut Application,
     ) -> Result<(), worker::Error> {
-        check_dates(
-            &new_application.created_at,
-            &new_application.starting_at,
-            &new_application.ending_at,
-        )?;
+        check_dates(&new_application.starting_at, &new_application.ending_at)?;
         new_application.workstream_id = old_application.workstream_id.clone();
         new_application.creator = old_application.creator;
         new_application.created_at = old_application.created_at.clone();
@@ -214,9 +187,20 @@ impl Application {
 }
 
 fn check_dates(
-    _created_at: &str,
-    _starting_at: &Option<String>,
-    _ending_at: &Option<String>,
+    starting_at: &Option<String>,
+    ending_at: &Option<String>,
 ) -> Result<(), worker::Error> {
+    if let Some(start) = starting_at {
+        let starting_date: Date = Date::from(DateInit::String(start.to_string()));
+        if Date::now().as_millis() > starting_date.as_millis() {
+            return Err(Error::from("incorrect starting date"));
+        }
+    }
+    if let Some(end) = ending_at {
+        let ending_date: Date = Date::from(DateInit::String(end.to_string()));
+        if ending_date.as_millis() < Date::now().as_millis() {
+            return Err(Error::from("incorrect ending date"));
+        }
+    }
     Ok(())
 }
