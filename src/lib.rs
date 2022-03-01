@@ -43,6 +43,94 @@ pub async fn main(req: Request, env: Env, _worker_ctx: Context) -> Result<Respon
             console_log!("{}", req.url()?.path());
             Response::ok(version)
         })
+        .on_async(
+            "/users/:user/workstreams/:workstream/applications",
+            |mut req, ctx| async move {
+                let workstream_id = ctx.param("workstream").unwrap();
+                let user_address = ctx.param("user").unwrap();
+                console_log!(
+                    "user {} requested applications from workstream {} with method: {:?}",
+                    user_address,
+                    workstream_id,
+                    req.method()
+                );
+                return match req.method() {
+                    Method::Post => {
+                        if !is_authorized(&req, &ctx.env, &ctx).await? {
+                            return Response::error("Unauthorized", 401);
+                        }
+                        let store = ctx.kv("APPLICATIONS")?;
+                        let mut application = req.json::<Application>().await?;
+                        let mut applications = if let Some(applications) = store
+                            .get(workstream_id)
+                            .json::<HashMap<String, Application>>()
+                            .await?
+                        {
+                            applications
+                        } else {
+                            HashMap::new()
+                        };
+                        Application::populate(&mut application, user_address, workstream_id)?;
+                        applications.insert(application.id.clone(), application);
+                        store.put(workstream_id, applications)?.execute().await?;
+                        Response::ok("Application added")
+                    }
+                    Method::Put => {
+                        if !is_authorized(&req, &ctx.env, &ctx).await? {
+                            return Response::error("Unauthorized", 401);
+                        }
+                        let store = ctx.kv("APPLICATIONS")?;
+                        let mut new_application = req.json::<Application>().await?;
+                        let mut applications = match store
+                            .get(workstream_id)
+                            .json::<HashMap<String, Application>>()
+                            .await?
+                        {
+                            Some(applications) => {
+                                match applications.get(&new_application.id) {
+                                    Some(old_application) => {
+                                        Application::update(old_application, &mut new_application)?;
+                                    }
+                                    None => {
+                                        Application::populate(
+                                            &mut new_application,
+                                            user_address,
+                                            workstream_id,
+                                        )?;
+                                    }
+                                }
+                                applications
+                            }
+                            None => {
+                                Application::populate(
+                                    &mut new_application,
+                                    user_address,
+                                    workstream_id,
+                                )?;
+                                HashMap::new()
+                            }
+                        };
+                        applications.insert(workstream_id.to_string(), new_application);
+                        store.put(workstream_id, applications)?.execute().await?;
+                        Response::ok("Application updated")
+                    }
+                    Method::Get => {
+                        return match ctx
+                            .kv("APPLICATIONS")?
+                            .get(workstream_id)
+                            .json::<HashMap<String, Application>>()
+                            .await?
+                        {
+                            Some(applications) => {
+                                Response::from_json::<HashMap<String, Application>>(&applications)
+                            }
+                            None => Response::error("No applications found for workstream", 404),
+                        }
+                    }
+                    _ => Response::error("HTTP Method Not Allowed", 405),
+                };
+            },
+        )
         .on_async("/users/:user/workstreams", |mut req, ctx| async move {
             let addr_string = ctx.param("user").unwrap();
             return match req.method() {
@@ -77,10 +165,11 @@ pub async fn main(req: Request, env: Env, _worker_ctx: Context) -> Result<Respon
             };
         })
         .on_async(
-            "/users/:user/workstreams/:workstream_id",
+            "/users/:user/workstreams/:workstream",
             |mut req, ctx| async move {
-                let workstream_id = ctx.param("workstream_id").unwrap();
+                let workstream_id = ctx.param("workstream").unwrap();
                 let addr_string = ctx.param("user").unwrap();
+                console_log!("path: {}", req.path());
                 console_log!(
                     "user {} requested workstream {} with method: {:?}",
                     addr_string,
@@ -120,56 +209,6 @@ pub async fn main(req: Request, env: Env, _worker_ctx: Context) -> Result<Respon
                             Some(user) => Response::from_json(&user.workstreams.get(workstream_id)),
                             None => Response::error("Workstream not found", 404),
                         };
-                    }
-                    _ => Response::error("HTTP Method Not Allowed", 405),
-                };
-            },
-        )
-        .on_async(
-            "/users/:user/workstreams/:workstream/applications",
-            |mut req, ctx| async move {
-                let workstream_id = ctx.param("workstream").unwrap();
-                let user_address = ctx.param("user").unwrap();
-                console_log!(
-                    "user {} requested applications from workstream {} with method: {:?}",
-                    user_address,
-                    workstream_id,
-                    req.method()
-                );
-                return match req.method() {
-                    Method::Post => {
-                        if !is_authorized(&req, &ctx.env, &ctx).await? {
-                            return Response::error("Unauthorized", 401);
-                        }
-                        let store = ctx.kv("APPLICATIONS")?;
-                        let mut application = req.json::<Application>().await?;
-                        let mut applications = if let Some(applications) = store
-                            .get(workstream_id)
-                            .json::<HashMap<String, Application>>()
-                            .await?
-                        {
-                            applications
-                        } else {
-                            HashMap::new()
-                        };
-                        Application::populate(&mut application, user_address, workstream_id)?;
-                        applications.insert(application.id.clone(), application);
-                        store.put(workstream_id, applications)?.execute().await?;
-                        Response::ok("Application added")
-                    }
-                    Method::Put => Response::ok("put method WIP"),
-                    Method::Get => {
-                        return match ctx
-                            .kv("APPLICATIONS")?
-                            .get(user_address)
-                            .json::<HashMap<String, Application>>()
-                            .await?
-                        {
-                            Some(applications) => {
-                                Response::from_json::<HashMap<String, Application>>(&applications)
-                            }
-                            None => Response::error("No applications found for workstream", 404),
-                        }
                     }
                     _ => Response::error("HTTP Method Not Allowed", 405),
                 };

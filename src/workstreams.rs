@@ -23,23 +23,20 @@ impl fmt::Display for PaymentCurrency {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
-pub enum WorkstreamState {
-    Funded,
-    Open,
-    Finished,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Application {
+    #[serde(skip_deserializing)]
     pub id: String,
     description: String,
+    #[serde(skip_deserializing)]
     workstream_id: String,
+    #[serde(skip_deserializing)]
     creator: Address,
-    #[serde(flatten)]
     receivers: Vec<Receiver>,
+    payment_currency: PaymentCurrency,
     created_at: String,
     starting_at: Option<String>,
     ending_at: Option<String>,
+    #[serde(skip_deserializing)]
     state: ApplicationState,
 }
 
@@ -56,11 +53,17 @@ pub enum ApplicationState {
     Pending,
 }
 
+impl Default for ApplicationState {
+    fn default() -> Self {
+        ApplicationState::Pending
+    }
+}
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Workstream {
     #[serde(skip_deserializing)]
     pub id: String,
     wtype: WorkstreamType,
+    #[serde(skip_deserializing)]
     creator: Address,
     created_at: String,
     starting_at: Option<String>,
@@ -68,9 +71,21 @@ pub struct Workstream {
     description: String,
     #[serde(flatten)]
     drips_config: DripsConfig,
+    #[serde(skip_deserializing)]
     state: WorkstreamState,
-    #[serde(flatten)]
-    applications: Option<Vec<Application>>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+pub enum WorkstreamState {
+    Funded,
+    Open,
+    Finished,
+}
+
+impl Default for WorkstreamState {
+    fn default() -> Self {
+        WorkstreamState::Open
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
@@ -131,7 +146,6 @@ impl Workstream {
         workstream.creator = Address::from_str(user).map_err(|err| Error::from(err.to_string()))?;
         workstream.state = WorkstreamState::Open;
         workstream.created_at = Date::now().to_string();
-        workstream.applications = None;
         let drips_hub: Option<String> = env
             .kv("DRIPSHUBS")?
             .get(&workstream.drips_config.payment_currency.to_string())
@@ -180,6 +194,21 @@ impl Application {
             Address::from_str(user).map_err(|err| Error::from(err.to_string()))?;
         application.state = ApplicationState::Pending;
         application.created_at = Date::now().to_string();
+        Ok(())
+    }
+
+    pub fn update(
+        old_application: &Application,
+        new_application: &mut Application,
+    ) -> Result<(), worker::Error> {
+        check_dates(
+            &new_application.created_at,
+            &new_application.starting_at,
+            &new_application.ending_at,
+        )?;
+        new_application.workstream_id = old_application.workstream_id.clone();
+        new_application.creator = old_application.creator;
+        new_application.created_at = old_application.created_at.clone();
         Ok(())
     }
 }
