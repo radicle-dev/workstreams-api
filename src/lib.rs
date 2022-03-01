@@ -71,9 +71,9 @@ pub async fn main(req: Request, env: Env, _worker_ctx: Context) -> Result<Respon
                             HashMap::new()
                         };
                         Application::populate(&mut application, user_address, workstream_id)?;
-                        applications.insert(application.id.clone(), application);
+                        applications.insert(application.id.clone(), application.clone());
                         store.put(workstream_id, applications)?.execute().await?;
-                        Response::ok("Application added")
+                        Response::from_json::<Application>(&application)
                     }
                     Method::Put => {
                         if !is_authorized(&req, &ctx.env, &ctx).await? {
@@ -110,9 +110,9 @@ pub async fn main(req: Request, env: Env, _worker_ctx: Context) -> Result<Respon
                                 HashMap::new()
                             }
                         };
-                        applications.insert(workstream_id.to_string(), new_application);
+                        applications.insert(workstream_id.to_string(), new_application.clone());
                         store.put(workstream_id, applications)?.execute().await?;
-                        Response::ok("Application updated")
+                        Response::from_json::<Application>(&new_application)
                     }
                     Method::Get => {
                         return match ctx
