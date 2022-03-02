@@ -167,7 +167,7 @@ pub async fn main(req: Request, env: Env, _worker_ctx: Context) -> Result<Respon
                         {
                             Some(mut applications) => {
                                 let res = Response::from_json(&applications.remove(application_id));
-                                store.put(&workstream_id, &applications)?.execute().await?;
+                                store.put(workstream_id, &applications)?.execute().await?;
                                 res
                             }
                             None => Response::error("Application not found", 404),
@@ -185,7 +185,8 @@ pub async fn main(req: Request, env: Env, _worker_ctx: Context) -> Result<Respon
                         return Response::error("Unauthorized", 401);
                     }
                     let mut workstream = req.json::<Workstream>().await?;
-                    Workstream::populate(&mut workstream, addr_string, &ctx.env).await?;
+                    let workstream_id =
+                        Workstream::populate(&mut workstream, addr_string, &ctx.env).await?;
                     console_log!("New Workstream: \n {:?}", workstream);
                     let store = ctx.kv("USERS")?;
                     let mut user = if let Some(user) = store.get(addr_string).json::<User>().await?
@@ -196,8 +197,7 @@ pub async fn main(req: Request, env: Env, _worker_ctx: Context) -> Result<Respon
                             workstreams: HashMap::new(),
                         }
                     };
-                    user.workstreams
-                        .insert(workstream.id.clone(), workstream.clone());
+                    user.workstreams.insert(workstream_id, workstream.clone());
                     store.put(addr_string, user)?.execute().await?;
                     Response::from_json::<Workstream>(&workstream)
                 }

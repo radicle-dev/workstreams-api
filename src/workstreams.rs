@@ -24,19 +24,20 @@ impl fmt::Display for PaymentCurrency {
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Application {
-    #[serde(skip_deserializing)]
+    #[serde(default)]
     pub id: String,
     description: String,
-    #[serde(skip_deserializing)]
+    #[serde(default)]
     workstream_id: String,
-    #[serde(skip_deserializing)]
+    #[serde(default)]
     creator: Address,
     receivers: Vec<Receiver>,
     payment_currency: PaymentCurrency,
+    #[serde(default)]
     created_at: String,
     starting_at: Option<String>,
     ending_at: Option<String>,
-    #[serde(skip_deserializing)]
+    #[serde(default)]
     state: ApplicationState,
 }
 
@@ -60,18 +61,19 @@ impl Default for ApplicationState {
 }
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Workstream {
-    #[serde(skip_deserializing)]
+    #[serde(default)]
     pub id: String,
     wtype: WorkstreamType,
-    #[serde(skip_deserializing)]
+    #[serde(default)]
     creator: Address,
+    #[serde(default)]
     created_at: String,
     starting_at: Option<String>,
     ending_at: Option<String>,
     description: String,
     #[serde(flatten)]
     drips_config: DripsConfig,
-    #[serde(skip_deserializing)]
+    #[serde(default)]
     state: WorkstreamState,
 }
 
@@ -136,7 +138,7 @@ impl Workstream {
         workstream: &mut Workstream,
         user: &str,
         env: &Env,
-    ) -> Result<(), worker::Error> {
+    ) -> Result<String, worker::Error> {
         workstream.id = Uuid::new_v4().to_string();
         workstream.creator = Address::from_str(user).map_err(|err| Error::from(err.to_string()))?;
         workstream.state = WorkstreamState::Open;
@@ -153,7 +155,7 @@ impl Workstream {
             workstream.drips_config.drips_hub = Address::from_str(&drips_hub.unwrap())
                 .map_err(|err| Error::from(err.to_string()))?;
         }
-        Ok(())
+        Ok(workstream.id.to_string())
     }
 }
 
