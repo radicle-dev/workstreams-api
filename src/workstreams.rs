@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::fmt::{self, Debug};
 use std::str::FromStr;
 use uuid::Uuid;
-use worker::{console_log, Date, DateInit, Env, Error};
+use worker::{Date, DateInit, Env, Error};
 
 #[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
 pub enum WorkstreamType {
@@ -23,22 +23,21 @@ impl fmt::Display for PaymentCurrency {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
-pub enum WorkstreamState {
-    Funded,
-    Open,
-    Finished,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Application {
-    id: String,
+    #[serde(default)]
+    pub id: String,
     description: String,
+    #[serde(default)]
     workstream_id: String,
+    #[serde(default)]
     creator: Address,
     receivers: Vec<Receiver>,
+    payment_currency: PaymentCurrency,
+    #[serde(default)]
     created_at: String,
-    starting_at: String,
+    starting_at: Option<String>,
     ending_at: Option<String>,
+    #[serde(default)]
     state: ApplicationState,
 }
 
@@ -55,21 +54,40 @@ pub enum ApplicationState {
     Pending,
 }
 
+impl Default for ApplicationState {
+    fn default() -> Self {
+        ApplicationState::Pending
+    }
+}
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct Workstream {
-    #[serde(skip_deserializing)]
+    #[serde(default)]
     pub id: String,
     wtype: WorkstreamType,
-    creator: String,
+    #[serde(default)]
+    creator: Address,
+    #[serde(default)]
     created_at: String,
     starting_at: Option<String>,
     ending_at: Option<String>,
     description: String,
     #[serde(flatten)]
     drips_config: DripsConfig,
+    #[serde(default)]
     state: WorkstreamState,
-    #[serde(flatten)]
-    applications: Option<Vec<Application>>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+pub enum WorkstreamState {
+    Funded,
+    Open,
+    Finished,
+}
+
+impl Default for WorkstreamState {
+    fn default() -> Self {
+        WorkstreamState::Open
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
@@ -97,15 +115,8 @@ impl Workstream {
             old_workstream.drips_config = new_workstream.drips_config;
         }
         // update dates
-        if !Workstream::check_dates(
-            &new_workstream.created_at,
-            &new_workstream.starting_at,
-            &new_workstream.ending_at,
-        )? {
-            return Err(worker::Error::from("wrong date format"));
-        }
+        check_dates(&new_workstream.starting_at, &new_workstream.ending_at)?;
         // Update time
-        old_workstream.created_at = new_workstream.created_at;
         old_workstream.starting_at = new_workstream.starting_at;
         old_workstream.ending_at = new_workstream.ending_at;
         // update metadata
@@ -123,24 +134,16 @@ impl Workstream {
         Ok(true)
     }
     // check if dates make sense (e.g created_at is before or at the same time with starting_at)
-    fn check_dates(
-        _created_at: &str,
-        _starting_at: &Option<String>,
-        _ending_at: &Option<String>,
-    ) -> Result<bool, worker::Error> {
-        Ok(true)
-    }
     pub async fn populate(
         workstream: &mut Workstream,
         user: &str,
         env: &Env,
-    ) -> Result<(), worker::Error> {
+    ) -> Result<String, worker::Error> {
         workstream.id = Uuid::new_v4().to_string();
-        workstream.creator = user.to_owned();
+        workstream.creator = Address::from_str(user).map_err(|err| Error::from(err.to_string()))?;
         workstream.state = WorkstreamState::Open;
+        check_dates(&workstream.starting_at, &workstream.ending_at)?;
         workstream.created_at = Date::now().to_string();
-        workstream.applications = None;
-        workstream.state = WorkstreamState::Open;
         let drips_hub: Option<String> = env
             .kv("DRIPSHUBS")?
             .get(&workstream.drips_config.payment_currency.to_string())
@@ -152,22 +155,54 @@ impl Workstream {
             workstream.drips_config.drips_hub = Address::from_str(&drips_hub.unwrap())
                 .map_err(|err| Error::from(err.to_string()))?;
         }
-        if let Some(start) = &workstream.starting_at {
-            let starting_date: Date = Date::from(DateInit::String(start.to_string()));
-            if Date::now().as_millis() > starting_date.as_millis() {
-                return Err(Error::from("incorrect starting date"));
-            } else {
-                workstream.starting_at = Some(starting_date.to_string());
-            }
-        };
-        if let Some(end) = &workstream.ending_at {
-            let ending_date: Date = Date::from(DateInit::String(end.to_string()));
-            if ending_date.as_millis() < Date::now().as_millis() {
-                return Err(Error::from("incorrect ending date"));
-            } else {
-                workstream.ending_at = Some(ending_date.to_string());
-            }
-        };
+        Ok(workstream.id.to_string())
+    }
+}
+
+impl Application {
+    pub fn populate(
+        application: &mut Application,
+        user: &str,
+        workstream: &str,
+    ) -> Result<(), worker::Error> {
+        check_dates(&application.starting_at, &application.ending_at)?;
+        application.created_at = Date::now().to_string();
+        application.id = Uuid::new_v4().to_string();
+        application.workstream_id = workstream.to_string();
+        application.creator =
+            Address::from_str(user).map_err(|err| Error::from(err.to_string()))?;
+        application.state = ApplicationState::Pending;
+        application.created_at = Date::now().to_string();
         Ok(())
     }
+
+    pub fn update(
+        old_application: &Application,
+        new_application: &mut Application,
+    ) -> Result<(), worker::Error> {
+        check_dates(&new_application.starting_at, &new_application.ending_at)?;
+        new_application.workstream_id = old_application.workstream_id.clone();
+        new_application.creator = old_application.creator;
+        new_application.created_at = old_application.created_at.clone();
+        Ok(())
+    }
+}
+
+fn check_dates(
+    starting_at: &Option<String>,
+    ending_at: &Option<String>,
+) -> Result<(), worker::Error> {
+    if let Some(start) = starting_at {
+        let starting_date: Date = Date::from(DateInit::String(start.to_string()));
+        if Date::now().as_millis() > starting_date.as_millis() {
+            return Err(Error::from("incorrect starting date"));
+        }
+    }
+    if let Some(end) = ending_at {
+        let ending_date: Date = Date::from(DateInit::String(end.to_string()));
+        if ending_date.as_millis() < Date::now().as_millis() {
+            return Err(Error::from("incorrect ending date"));
+        }
+    }
+    Ok(())
 }
