@@ -29,7 +29,6 @@ async fn is_authorized(req: &Request, env: &Env, ctx: &RouteContext<()>) -> Resu
     };
     let addr = Address::from_str(ctx.param("user").unwrap())
         .map_err(|_| worker::Error::from("Cannot parse address"))?;
-    console_log!("Authorization is tied with user: {}", addr);
     Ok(addr == auth.address)
 }
 #[event(fetch, respond_with_errors)]
@@ -40,7 +39,6 @@ pub async fn main(req: Request, env: Env, _worker_ctx: Context) -> Result<Respon
     router
         .get("/api/v0/info/", |req, _ctx| {
             let version = "0.1";
-            console_log!("{}", req.url()?.path());
             Response::ok(version)
         })
         .on_async(
@@ -48,12 +46,6 @@ pub async fn main(req: Request, env: Env, _worker_ctx: Context) -> Result<Respon
             |mut req, ctx| async move {
                 let workstream_id = ctx.param("workstream").unwrap();
                 let user_address = ctx.param("user").unwrap();
-                console_log!(
-                    "user {} requested applications from workstream {} with method: {:?}",
-                    user_address,
-                    workstream_id,
-                    req.method()
-                );
                 return match req.method() {
                     Method::Post => {
                         if !is_authorized(&req, &ctx.env, &ctx).await? {
@@ -187,7 +179,6 @@ pub async fn main(req: Request, env: Env, _worker_ctx: Context) -> Result<Respon
                     let mut workstream = req.json::<Workstream>().await?;
                     let workstream_id =
                         Workstream::populate(&mut workstream, addr_string, &ctx.env).await?;
-                    console_log!("New Workstream: \n {:?}", workstream);
                     let store = ctx.kv("USERS")?;
                     let mut user = if let Some(user) = store.get(addr_string).json::<User>().await?
                     {
@@ -215,13 +206,6 @@ pub async fn main(req: Request, env: Env, _worker_ctx: Context) -> Result<Respon
             |mut req, ctx| async move {
                 let workstream_id = ctx.param("workstream").unwrap();
                 let addr_string = ctx.param("user").unwrap();
-                console_log!("path: {}", req.path());
-                console_log!(
-                    "user {} requested workstream {} with method: {:?}",
-                    addr_string,
-                    workstream_id,
-                    req.method()
-                );
                 return match req.method() {
                     Method::Put => {
                         if !is_authorized(&req, &ctx.env, &ctx).await? {
@@ -231,11 +215,6 @@ pub async fn main(req: Request, env: Env, _worker_ctx: Context) -> Result<Respon
                         let store = ctx.kv("USERS")?;
                         if let Some(mut user) = store.get(addr_string).json::<User>().await? {
                             let workstream_old = user.workstreams.get_mut(workstream_id);
-                            console_log!(
-                                "Editing old workstream \n{:?} \n with:\n{:?}",
-                                workstream_old,
-                                workstream_new
-                            );
                             match workstream_old {
                                 Some(wk) => {
                                     Workstream::update(wk, workstream_new.clone())?;
