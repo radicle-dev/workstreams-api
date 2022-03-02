@@ -134,13 +134,13 @@ pub async fn main(req: Request, env: Env, _worker_ctx: Context) -> Result<Respon
         .on_async(
             "/users/:user/workstreams/:workstream/applications/:application",
             |req, ctx| async move {
-                let workstream = ctx.param("workstream").unwrap();
+                let workstream_id = ctx.param("workstream").unwrap();
                 let application_id = ctx.param("application").unwrap();
                 match req.method() {
                     Method::Get => {
                         return match ctx
                             .kv("APPLICATIONS")?
-                            .get(workstream)
+                            .get(workstream_id)
                             .json::<HashMap<String, Application>>()
                             .await?
                         {
@@ -161,13 +161,13 @@ pub async fn main(req: Request, env: Env, _worker_ctx: Context) -> Result<Respon
                         }
                         let store = ctx.kv("APPLICATIONS")?;
                         return match store
-                            .get(workstream)
+                            .get(workstream_id)
                             .json::<HashMap<String, Application>>()
                             .await?
                         {
                             Some(mut applications) => {
                                 let res = Response::from_json(&applications.remove(application_id));
-                                store.put(&application_id, applications)?.execute().await?;
+                                store.put(&workstream_id, &applications)?.execute().await?;
                                 res
                             }
                             None => Response::error("Application not found", 404),
@@ -254,6 +254,21 @@ pub async fn main(req: Request, env: Env, _worker_ctx: Context) -> Result<Respon
                         return match ctx.kv("USERS")?.get(addr_string).json::<User>().await? {
                             Some(user) => Response::from_json(&user.workstreams.get(workstream_id)),
                             None => Response::error("Workstream not found", 404),
+                        };
+                    }
+                    Method::Delete => {
+                        if !is_authorized(&req, &ctx.env, &ctx).await? {
+                            return Response::error("Unauthorized", 401);
+                        }
+                        let store = ctx.kv("USERS")?;
+                        return match store.get(addr_string).json::<User>().await? {
+                            Some(mut user) => {
+                                let res =
+                                    Response::from_json(&user.workstreams.remove(workstream_id));
+                                store.put(addr_string, user)?.execute().await?;
+                                res
+                            }
+                            None => Response::error("User not found", 404),
                         };
                     }
                     _ => Response::error("HTTP Method Not Allowed", 405),
