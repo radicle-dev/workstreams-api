@@ -1,7 +1,9 @@
 use auth::{AuthRequest, Authorization};
 use ethers::types::Address;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::str::FromStr;
+use url::Url;
 use users::User;
 use worker::*;
 
@@ -32,6 +34,12 @@ async fn is_authorized(req: &Request, env: &Env, ctx: &RouteContext<()>) -> Resu
     console_log!("Authorization is tied with user: {}", addr);
     Ok(addr == auth.address)
 }
+
+fn parse_query_string(req: &Request) -> Result<HashMap<String, String>> {
+    let url = req.url()?;
+    let args: HashMap<String, String> = url.query_pairs().into_owned().collect();
+    Ok(args)
+}
 #[event(fetch, respond_with_errors)]
 pub async fn main(req: Request, env: Env, _worker_ctx: Context) -> Result<Response> {
     log_request(&req);
@@ -45,7 +53,34 @@ pub async fn main(req: Request, env: Env, _worker_ctx: Context) -> Result<Respon
         })
         .get_async("/users", |mut req, ctx| async move {
             let store = ctx.kv("USERS")?;
-            return Response::from_json(&store.list().execute().await?.keys);
+            let args = parse_query_string(&req)?;
+            let users: Vec<String> = store
+                .list()
+                .execute()
+                .await?
+                .keys
+                .iter()
+                .map(|x| x.name.clone())
+                .collect();
+            Response::from_json(&users)
+        })
+        .get_async("/workstreams", |mut req, ctx| async move {
+            let store = ctx.kv("USERS")?;
+            let args = parse_query_string(&req)?;
+            let addresses: Vec<String> = store
+                .list()
+                .execute()
+                .await?
+                .keys
+                .iter()
+                .map(|x| x.name.clone())
+                .collect();
+            let mut workstreams: Vec<Workstream> = vec![];
+            for address in addresses {
+                let user = store.get(&address).json::<User>().await?.unwrap();
+                workstreams.extend(user.workstreams.into_values().collect::<Vec<Workstream>>());
+            }
+            Response::from_json(&workstreams)
         })
         .on_async(
             "/users/:user/workstreams/:workstream/applications",
