@@ -41,6 +41,10 @@ pub async fn main(req: Request, env: Env, _worker_ctx: Context) -> Result<Respon
             let version = "0.1";
             Response::ok(version)
         })
+        .get_async("/users", |mut req, ctx| async move {
+            let store = ctx.kv("USERS")?;
+            return Response::from_json(&store.list().execute().await?.keys);
+        })
         .on_async(
             "/users/:user/workstreams/:workstream/applications",
             |mut req, ctx| async move {
