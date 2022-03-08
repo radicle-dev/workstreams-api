@@ -235,14 +235,21 @@ fn parse_query_string(req: &Request) -> Result<HashMap<String, String>> {
 ///
 /// It accepts an AuthRequest object as a JSON encoded object in the body of the request.
 ///
-/// The message and signature must comform to EIP4361: https://eips.ethereum.org/EIPS/eip-4361
+/// The message and signature **must** comform to EIP4361: https://eips.ethereum.org/EIPS/eip-4361
 ///
 /// The can be easily generated using:
-/// - https://github.com/spruceid/siwe
-/// - https://github.com/spruceid/siwe-rs
+/// - [siwe-js](https://github.com/spruceid/siwe)
+/// - [siwe-rs](https://github.com/spruceid/siwe-rs)
 ///
+/// A succesful response will include the following cookie in the headers: `SIWE-AUTH=XXXXXX`,
+/// where XXXXX is the authorization token.
+///
+/// With that token, the user can authorize a request to access a resource via a method that
+/// requires authorization. The token expires automatically based on the AuthRequest object that
+/// was sent and must be renewed using the same mechanism.
 ///
 /// An example flow of the API:
+/// ```
 ///      ┌─────────┐                                              ┌───┐                             ┌────────┐
 ///      │0xab03..4│                                              │API│                             │KV_STORE│
 ///      └────┬────┘                                              └─┬─┘                             └───┬────┘
@@ -268,6 +275,26 @@ fn parse_query_string(req: &Request) -> Result<HashMap<String, String>> {
 ///      ┌────┴────┐                                              ┌─┴─┐                             ┌───┴────┐
 ///      │0xab03..4│                                              │API│                             │KV_STORE│
 ///      └─────────┘                                              └───┘                             └────────┘
+/// ```
+///
+/// AuthRequest serialized in JSON:
+///
+/// ```
+/// '{\n    \"signature\": \"0x49a6e2a1995fde3bd10bd9ae2ecefe199ecfcb576125cc8582ee8458a4efd62668539b11f7bdb10e07f94b223f266cdd5ed592b37db4a2941541336a696d820a1c\",\n    \"message\": \"localhost:4361 wants you to sign in with your Ethereum account:\\n0xDFA1fEa9915EF18b1f2A752343b168cA9c9d97aB\\n\\nSIWE Notepad Example\\n\\nURI: http://localhost:4361\\nVersion: 1\\nChain ID: 1\\nNonce: zPPtgK5pMVHnnr8Co\\nIssued At: 2022-03-02T10:56:48.478Z\\nExpiration Time: 2022-03-02T20:56:48.474Z\\nResources:\\n- http://localhost:4361/address/0xDFA1fEa9915EF18b1f2A752343b168cA9c9d97aB\"\n}'
+/// ```
+///
+/// If the authorization is succesful, the response will have the following header where the
+/// `SIWE-AUTH` cookie is the authorization token.
+///
+/// ```
+/// "set-cookie": "SIWE-AUTH=EACB9E10D0FD122CF0D2BA5F282CEBA0D71B48DD40A04893AAB94D1BE3F16F7D;
+/// Secure; HttpOnly; SameSite=Lax; Expires=Tue Mar 08 2022 20:51:45 GMT+0000 (Coordinated
+/// Universal Time)"
+/// ```
+///
+///
+///
+///
 #[event(fetch, respond_with_errors)]
 pub async fn main(req: Request, env: Env, _worker_ctx: Context) -> Result<Response> {
     log_request(&req);
