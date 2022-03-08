@@ -6,14 +6,19 @@ use siwe::Message;
 use std::str::FromStr;
 use worker::*;
 
-// We store the message and signature in String format in plcae of their native structs so that
-// we can easily Serialize and Deserialize
+/// All authentication requests are compromised of two elements:
+/// a) A message that follows EIP4361
+/// b) A signature of said message
 #[derive(Deserialize, Serialize, Debug)]
 pub struct AuthRequest {
     message: String,
     signature: String,
 }
 
+/// An authorization is issued to a particular address based on the fields included in the
+/// AuthRequest message. With the Resources vecotr, the API can have even more granular control
+/// over the access control of a particular address.
+/// All the fields are populated by a AuthRequest.message, from the fields with the same name.
 #[derive(Deserialize, Serialize, Debug)]
 pub struct Authorization {
     resources: Vec<String>,
@@ -24,6 +29,10 @@ pub struct Authorization {
 }
 
 impl Authorization {
+    /// Parses a worker::Request for an authentication token, serialized as a JSON object in the
+    /// body of the request. The authentication token is used to
+    /// retrieve the related Authorization and verify that the token-holder can access the
+    /// particular resource.
     pub async fn parse_request(req: &Request) -> Result<String> {
         let headers = req.headers();
         let bearer = headers.get("BEARER")?;
@@ -33,6 +42,8 @@ impl Authorization {
             None => Err(worker::Error::from("no authorization header found")),
         }
     }
+    /// Get an authorizsation from the Cloudflare KV store, based on a token. The token is retrived
+    /// from the request with parse_request and used as the key to find the Authorization struct.
     pub async fn get<T>(env: &Env, token: T) -> Result<Option<Authorization>>
     where
         T: Into<String>,
@@ -44,7 +55,20 @@ impl Authorization {
             .await
             .map_err(worker::Error::from)
     }
-    // not sure what is the best return for this function
+    /// Creates an Authorization in the Cloudflare KC store based on an AuthRequest.
+    /// After the message is verified against the signature, the authorization is tied to the
+    /// address that signed the message.  The message is converted to bytes and hashed with a
+    /// pseudorandomly generated salt. The hash is used as the KEY of the Authorization and
+    /// returned to the user to be used as a token.
+    ///
+    /// For better UX, we return the token in the form of a cookie that can be used by the web
+    /// application.
+    ///
+    /// The Authorization value is set to expire at the Cloduflare KV store at the same time that
+    /// it expires as an Authorization, defined in the `expiration_time` field of the
+    /// SIWE::Message. That way, we don't have to deal with stale records, but Cloudflare takes
+    /// care of it. After it expires, the token will no longer be usable and the user will have to
+    /// Authorize again and use a new token.
     pub async fn create(env: &Env, auth: AuthRequest) -> Result<String> {
         let message: Message =
             Message::from_str(&auth.message).map_err(|err| worker::Error::from(err.to_string()))?;
@@ -75,9 +99,6 @@ impl Authorization {
                 // add salt to the auth token
                 hasher.update(rng.gen::<[u8; 32]>());
                 let hash = format!("{:X}", hasher.finalize());
-                // store the auth object of a user with the auth token as key
-                // the auth object KV will expire when then SIWE message expires as well.
-                // That way, we don't have stale auth objects in our KV store
                 authentication
                     .put(&hash, &auth_string)?
                     .expiration(
@@ -100,6 +121,8 @@ impl Authorization {
 }
 
 impl AuthRequest {
+    /// Parses a worker::Request struct for an AuthRequest struct, serialized as a JSON object in
+    /// the body of the request.
     pub async fn from_req(mut req: Request) -> Result<AuthRequest> {
         let body = req
             .json::<AuthRequest>()

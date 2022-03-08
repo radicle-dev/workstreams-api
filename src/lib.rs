@@ -12,6 +12,7 @@ mod users;
 mod utils;
 mod workstreams;
 
+/// Log a request to the API. Boilerplate function , useful for debugging purposes.
 fn log_request(req: &Request) {
     console_log!(
         "{} - [{}], located at: {:?}, within: {}",
@@ -22,6 +23,15 @@ fn log_request(req: &Request) {
     );
 }
 
+/// Checks if the request has an authorization token and if that oken is authorized to access
+/// the particular resource. Although complex schemes can be used with the Authorization.resources
+/// vector, currently we don't use that.
+///
+/// The authorization scheme is very simple:
+///
+/// A token that is tied to an Address A, has root access to all resources under `/api/v1/users/A`.
+/// For example, they can create a new workstream, edit an old one or delete, because the
+/// `workstreams` resource is under the following path: `/api/v1/users/A/workstreams/`.
 async fn is_authorized(req: &Request, env: &Env, ctx: &RouteContext<()>) -> Result<bool> {
     let token = auth::Authorization::parse_request(req).await?;
     let auth = match auth::Authorization::get(env, token).await? {
@@ -34,11 +44,230 @@ async fn is_authorized(req: &Request, env: &Env, ctx: &RouteContext<()>) -> Resu
     Ok(addr == auth.address)
 }
 
+/// Parses a workstream::Request and returns a HashMap of the query strings.
+///
+/// `/api/v1/workstreams?state=funded` will result in a hasmap with the following key-value pair:
+/// "state":"funded".
 fn parse_query_string(req: &Request) -> Result<HashMap<String, String>> {
     let url = req.url()?;
     let args: HashMap<String, String> = url.query_pairs().into_owned().collect();
     Ok(args)
 }
+
+/// # API schema
+///
+/// ## /api/v1/users
+///
+/// The route accepts the following HTTP methods: GET
+///
+/// ## GET
+///
+/// It returns an array of the addresses of all the users:
+/// ```
+/// [
+/// "0xDFA1fEa9915EF18b1f2A752343b168cA9c9d97aB"
+/// ]
+/// ```
+///
+/// ## /api/v1/workstreams
+///
+/// The route accepts the following HTTP methods: GET
+///
+/// ### GET
+///
+/// It returns an array of all the workstreams. It accepts a filter based on the state as a query
+/// string. For example `/api/v1/workstreams?state=funded`. The accepted states are defined in
+/// the WorkstreamState enum.
+///
+/// Response example:
+/// ```
+/// [
+///    {
+///        "id": "e0173d95-37a6-4089-b127-9eceee95574b",
+///        "wtype": "Grant",
+///        "creator": "0xdfa1fea9915ef18b1f2a752343b168ca9c9d97ab",
+///        "created_at": "Wed Mar 02 2022 12:46:38 GMT+0000 (Coordinated Universal Time)",
+///        "starting_at": "March 5, 2022 12:17:31 GMT",
+///        "ending_at": "March 10, 2022 16:17:31 GMT",
+///        "description": "lorem ipsum",
+///        "receivers": [
+///            {
+///                "address": "0x7ad046baed02ef99423ef6b53c5940987c5c159b",
+///                "payment_rate": 150
+///            }
+///        ],
+///        "drips_acct": 0,
+///        "payment_currency": "Dai",
+///        "drips_hub": "0x0000000000000000000000000000000000000000",
+///        "state": "Open"
+///    }
+/// ]
+/// ```
+///
+/// ### /api/v1/users/:user/workstreams/:worksteam/applications
+///
+/// HTTP methods: GET, POST, PUT
+///
+/// Require Authorization: POST, PUT
+///
+/// The route accepts the following parameters encoded into the path:
+/// - user
+/// - workstream
+///
+/// For example: `api/v1/users/0xdfa1fea9915ef18b1f2a752343b168ca9c9d97ab/workstreams/e0173d95-37a6-4089-b127-9eceee95574b/applications`
+///
+/// ### GET
+///
+/// Returns an array of all Applications of the workstream with id = `:worktream`.
+///
+/// ### POST
+///
+/// Creates a new Application for the workstream with id = `workstream`.
+///
+/// The application is stored at the KV store of the API.
+///
+/// The user must pass a json object in the body of the request with a schema that follows the
+/// fields in the Application struct. All fields that have the `default` decorator, can be omitted,
+/// as they are populated by the API.
+///
+/// For example:
+///{
+///     "wtype": "Grant",
+///     "creator": "0xDFA1fEa9915EF18b1f2A752343b168cA9c9d97aB",
+///     "starting_at": "March 13, 2022 16:17:31 GMT",
+///     "ending_at": "March 10, 2022 16:17:31 GMT",
+///     "description": "NEW TEST ipsum",
+///     "payment_currency": "Dai",
+///     "receivers": [
+///         {
+///             "address": "0x7ad046baed02ef99423ef6b53c5940987c5c159b",
+///             "payment_rate": 150
+///         }
+///     ],
+/// }
+///
+/// ### PUT
+///
+/// Edits an existing Application by replacing all the fields of the old Application with the ones
+/// of the new, passed in the body of the request as JSON. The applications are matched by `id` and
+/// the following fields do not change:
+/// - id
+/// - created_at
+/// - creator
+///
+/// ## `/api/v1/users/:user/workstreams/:workstream/applications/:application`
+///
+/// HTTP Methods: GET, DELETE
+///
+/// Required Authorization: DELETE
+///
+/// ### GET
+///
+/// Returns the Application object with id = `:application`
+///
+///### DELETE
+///
+/// Delete the Application object with id = `:application` from the KV STORE.
+///
+/// ## `/api/v1/users/:user/workstreams
+///
+/// HTTP Methods: GET, POST, PUT
+///
+/// Required Authorization: POST, PUT
+///
+/// ### GET
+///
+/// Returns all workstreams of the user `:user`.
+///
+/// ### POST
+///
+/// Creates a new workstream based on the Workstream struct that is passed as a JSON object in the
+/// body of the request.
+///
+/// The workstream is saved at the KV store of the worker
+///
+/// Not all fields of the Workstream must be supplied by the user, as some are populated by the
+/// API.
+///
+/// The API will populate the following fields:
+/// - id
+/// - creator (with :user)
+/// - created_at
+/// - DripsHub
+/// - state
+///
+///
+/// ### PUT
+///
+/// Edits an existing workstream and replaces it fields with the ones defined in the workstream
+/// object that is passed as a JSON in the body of the request.
+///
+/// The following fields will not change:
+/// - id
+/// - creator
+/// - created_at
+/// - Dripshub
+///
+/// ## `/api/v1/users/:user/workstreams/:workstream
+///
+/// HTTP Methods: GET, DELETE
+///
+/// Require Authorization: DELETE
+///
+/// ### GET
+///
+/// Returns the workstream with id = `:workstream`.
+///
+/// ### DELETE
+///
+/// Deletes the workstream with id = `:workstream` from the KV store of the API.
+///
+///
+/// ## /api/v1/authorize
+///
+/// HTTP Methods: POST
+///
+/// Required Authorization: None
+///
+/// It authorizes an ethereum address to the API and generates a token that is returned to the
+/// user. Using that token, the user can access all the resources that have to do with that
+/// particular ethereum address (/users/:user/..).
+///
+/// It accepts an AuthRequest object as a JSON encoded object in the body of the request.
+///
+/// The message and signature must comform to EIP4361: https://eips.ethereum.org/EIPS/eip-4361
+///
+/// The can be easily generated using:
+/// - https://github.com/spruceid/siwe
+/// - https://github.com/spruceid/siwe-rs
+///
+///
+/// An example flow of the API:
+///      ┌─────────┐                                              ┌───┐                             ┌────────┐
+///      │0xab03..4│                                              │API│                             │KV_STORE│
+///      └────┬────┘                                              └─┬─┘                             └───┬────┘
+///           │POST /authorize {signature: "0x..", message: "{..}"} │                                   │     
+///           │────────────────────────────────────────────────────>│                                   │     
+///           │                                                     │                                   │     
+///           │                                                     ────┐                               │     
+///           │                                                         │ AuthRequest::from_req()       │     
+///           │                                                     <───┘                               │     
+///           │                                                     │                                   │     
+///           │                                                     ────┐                               │     
+///           │                                                         │ AuthRequest::create()         │     
+///           │                                                     <───┘                               │     
+///           │                                                     │                                   │     
+///           │                                                     │{key: token, value: Authorization }│     
+///           │                                                     │───────────────────────────────────>     
+///           │                                                     │                                   │     
+///           │                       token                         │                                   │     
+///           │<────────────────────────────────────────────────────│                                   │     
+///           │                                                     │                                   │     
+///           │         POST /users/0xab03..4/workstreams           │                                   │     
+///           │────────────────────────────────────────────────────>│                                   │     
+///      ┌────┴────┐                                              ┌─┴─┐                             ┌───┴────┐
+///      │0xab03..4│                                              │API│                             │KV_STORE│
+///      └─────────┘                                              └───┘                             └────────┘
 #[event(fetch, respond_with_errors)]
 pub async fn main(req: Request, env: Env, _worker_ctx: Context) -> Result<Response> {
     log_request(&req);
