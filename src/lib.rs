@@ -45,11 +45,6 @@ pub async fn main(req: Request, env: Env, _worker_ctx: Context) -> Result<Respon
     utils::set_panic_hook();
     let router = Router::new();
     router
-        .get("/api/v0/info/", |req, _ctx| {
-            let version = "0.1";
-            console_log!("{}", req.url()?.path());
-            Response::ok(version)
-        })
         .get_async("/users", |_req, ctx| async move {
             let store = ctx.kv("USERS")?;
             let users: Vec<String> = store
