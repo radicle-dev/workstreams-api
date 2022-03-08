@@ -45,7 +45,7 @@ pub async fn main(req: Request, env: Env, _worker_ctx: Context) -> Result<Respon
     utils::set_panic_hook();
     let router = Router::new();
     router
-        .get_async("/users", |_req, ctx| async move {
+        .get_async("/api/v1/users", |_req, ctx| async move {
             let store = ctx.kv("USERS")?;
             let users: Vec<String> = store
                 .list()
@@ -57,7 +57,7 @@ pub async fn main(req: Request, env: Env, _worker_ctx: Context) -> Result<Respon
                 .collect();
             Response::from_json(&users)
         })
-        .get_async("/workstreams", |req, ctx| async move {
+        .get_async("/api/v1/workstreams", |req, ctx| async move {
             let store = ctx.kv("USERS")?;
             let args = parse_query_string(&req)?;
             let addresses: Vec<String> = store
@@ -92,7 +92,7 @@ pub async fn main(req: Request, env: Env, _worker_ctx: Context) -> Result<Respon
             Response::from_json(&workstreams)
         })
         .on_async(
-            "/users/:user/workstreams/:workstream/applications",
+            "/api/v1/users/:user/workstreams/:workstream/applications",
             |mut req, ctx| async move {
                 let workstream_id = ctx.param("workstream").unwrap();
                 let user_address = ctx.param("user").unwrap();
@@ -180,7 +180,7 @@ pub async fn main(req: Request, env: Env, _worker_ctx: Context) -> Result<Respon
             },
         )
         .on_async(
-            "/users/:user/workstreams/:workstream/applications/:application",
+            "/api/v1/users/:user/workstreams/:workstream/applications/:application",
             |req, ctx| async move {
                 let workstream_id = ctx.param("workstream").unwrap();
                 let application_id = ctx.param("application").unwrap();
@@ -225,41 +225,44 @@ pub async fn main(req: Request, env: Env, _worker_ctx: Context) -> Result<Respon
                 }
             },
         )
-        .on_async("/users/:user/workstreams", |mut req, ctx| async move {
-            let addr_string = ctx.param("user").unwrap();
-            return match req.method() {
-                Method::Post => {
-                    if !is_authorized(&req, &ctx.env, &ctx).await? {
-                        return Response::error("Unauthorized", 401);
-                    }
-                    let mut workstream = req.json::<Workstream>().await?;
-                    let workstream_id =
-                        Workstream::populate(&mut workstream, addr_string, &ctx.env).await?;
-                    console_log!("New Workstream: \n {:?}", workstream);
-                    let store = ctx.kv("USERS")?;
-                    let mut user = if let Some(user) = store.get(addr_string).json::<User>().await?
-                    {
-                        user
-                    } else {
-                        User {
-                            workstreams: HashMap::new(),
-                        }
-                    };
-                    user.workstreams.insert(workstream_id, workstream.clone());
-                    store.put(addr_string, user)?.execute().await?;
-                    Response::from_json::<Workstream>(&workstream)
-                }
-                Method::Get => {
-                    return match ctx.kv("USERS")?.get(addr_string).json::<User>().await? {
-                        Some(user) => Response::from_json(&user.workstreams),
-                        None => Response::error("User not found", 404),
-                    };
-                }
-                _ => Response::error("HTTP Method Not Allowed", 405),
-            };
-        })
         .on_async(
-            "/users/:user/workstreams/:workstream",
+            "/api/v1/users/:user/workstreams",
+            |mut req, ctx| async move {
+                let addr_string = ctx.param("user").unwrap();
+                return match req.method() {
+                    Method::Post => {
+                        if !is_authorized(&req, &ctx.env, &ctx).await? {
+                            return Response::error("Unauthorized", 401);
+                        }
+                        let mut workstream = req.json::<Workstream>().await?;
+                        let workstream_id =
+                            Workstream::populate(&mut workstream, addr_string, &ctx.env).await?;
+                        console_log!("New Workstream: \n {:?}", workstream);
+                        let store = ctx.kv("USERS")?;
+                        let mut user =
+                            if let Some(user) = store.get(addr_string).json::<User>().await? {
+                                user
+                            } else {
+                                User {
+                                    workstreams: HashMap::new(),
+                                }
+                            };
+                        user.workstreams.insert(workstream_id, workstream.clone());
+                        store.put(addr_string, user)?.execute().await?;
+                        Response::from_json::<Workstream>(&workstream)
+                    }
+                    Method::Get => {
+                        return match ctx.kv("USERS")?.get(addr_string).json::<User>().await? {
+                            Some(user) => Response::from_json(&user.workstreams),
+                            None => Response::error("User not found", 404),
+                        };
+                    }
+                    _ => Response::error("HTTP Method Not Allowed", 405),
+                };
+            },
+        )
+        .on_async(
+            "/api/v1/users/:user/workstreams/:workstream",
             |mut req, ctx| async move {
                 let workstream_id = ctx.param("workstream").unwrap();
                 let addr_string = ctx.param("user").unwrap();
@@ -323,7 +326,7 @@ pub async fn main(req: Request, env: Env, _worker_ctx: Context) -> Result<Respon
                 };
             },
         )
-        .post_async("/authorize", |req, ctx| async move {
+        .post_async("/api/v1/authorize", |req, ctx| async move {
             let auth_req: AuthRequest = AuthRequest::from_req(req).await?;
             let token: String = Authorization::create(&ctx.env, auth_req).await?;
             let mut headers = Headers::new();
