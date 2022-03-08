@@ -12,6 +12,11 @@ mod users;
 mod utils;
 mod workstreams;
 
+// TODO:
+// - Verification on drips configuration
+// - Verification between allowing the user to change the state of the workstream
+// - try to use upstream libraries
+
 /// Log a request to the API. Boilerplate function , useful for debugging purposes.
 fn log_request(req: &Request) {
     console_log!(
