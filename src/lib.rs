@@ -6,6 +6,7 @@ use std::str::FromStr;
 use url::Url;
 use users::User;
 use worker::*;
+use workstreams::WorkstreamState;
 
 use crate::workstreams::{Application, Workstream};
 mod auth;
@@ -75,10 +76,26 @@ pub async fn main(req: Request, env: Env, _worker_ctx: Context) -> Result<Respon
                 .iter()
                 .map(|x| x.name.clone())
                 .collect();
+            let workstream_state: Option<WorkstreamState> = if let Some(state) = args.get("state") {
+                Some(WorkstreamState::from_str(state)?)
+            } else {
+                None
+            };
             let mut workstreams: Vec<Workstream> = vec![];
             for address in addresses {
                 let user = store.get(&address).json::<User>().await?.unwrap();
-                workstreams.extend(user.workstreams.into_values().collect::<Vec<Workstream>>());
+                workstreams.extend(
+                    user.workstreams
+                        .into_values()
+                        .filter(|x| {
+                            if let Some(state) = &workstream_state {
+                                &x.state == state
+                            } else {
+                                true
+                            }
+                        })
+                        .collect::<Vec<Workstream>>(),
+                );
             }
             Response::from_json(&workstreams)
         })

@@ -5,7 +5,7 @@ use std::str::FromStr;
 use uuid::Uuid;
 use worker::{Date, DateInit, Env, Error};
 
-#[derive(Clone, Debug, Deserialize, Serialize, Eq, PartialEq)]
+#[derive(Debug, Clone, Deserialize, Serialize, Eq, PartialEq)]
 pub enum WorkstreamType {
     Role,
     Grant,
@@ -74,7 +74,7 @@ pub struct Workstream {
     #[serde(flatten)]
     drips_config: DripsConfig,
     #[serde(default)]
-    state: WorkstreamState,
+    pub state: WorkstreamState,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
@@ -84,6 +84,18 @@ pub enum WorkstreamState {
     Finished,
 }
 
+impl FromStr for WorkstreamState {
+    type Err = worker::Error;
+    fn from_str(input: &str) -> Result<Self, worker::Error> {
+        let lower = input.to_lowercase();
+        match lower.as_ref() {
+            "funded" => Ok(WorkstreamState::Funded),
+            "open" => Ok(WorkstreamState::Open),
+            "finished" => Ok(WorkstreamState::Finished),
+            _ => Err(worker::Error::from("can't parse Workstream State")),
+        }
+    }
+}
 impl Default for WorkstreamState {
     fn default() -> Self {
         WorkstreamState::Open

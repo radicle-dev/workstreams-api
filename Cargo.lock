@@ -3176,6 +3176,7 @@ dependencies = [
  "chrono",
  "console_error_panic_hook",
  "ethers",
+ "futures",
  "hex",
  "iri-string",
  "rand",
@@ -3184,6 +3185,7 @@ dependencies = [
  "sha2 0.10.1",
  "siwe",
  "thiserror",
+ "url",
  "uuid",
  "worker",
 ]
