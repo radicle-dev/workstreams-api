@@ -1,9 +1,7 @@
 use auth::{AuthRequest, Authorization};
 use ethers::types::Address;
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::str::FromStr;
-use url::Url;
 use users::User;
 use worker::*;
 use workstreams::WorkstreamState;
@@ -52,9 +50,8 @@ pub async fn main(req: Request, env: Env, _worker_ctx: Context) -> Result<Respon
             console_log!("{}", req.url()?.path());
             Response::ok(version)
         })
-        .get_async("/users", |mut req, ctx| async move {
+        .get_async("/users", |_req, ctx| async move {
             let store = ctx.kv("USERS")?;
-            let args = parse_query_string(&req)?;
             let users: Vec<String> = store
                 .list()
                 .execute()
@@ -65,7 +62,7 @@ pub async fn main(req: Request, env: Env, _worker_ctx: Context) -> Result<Respon
                 .collect();
             Response::from_json(&users)
         })
-        .get_async("/workstreams", |mut req, ctx| async move {
+        .get_async("/workstreams", |req, ctx| async move {
             let store = ctx.kv("USERS")?;
             let args = parse_query_string(&req)?;
             let addresses: Vec<String> = store
