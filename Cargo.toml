@@ -2,8 +2,8 @@
 name = "workstreams-api"
 version = "0.1.0"
 authors = ["Odysseas Lamtzidis <odyslam@gmail.com>"]
+description = "The API of radicle-workstreams, a new way for teams to pay their contributes leveraging Drips"
 edition = "2018"
-
 
 [lib]
 crate-type = ["cdylib", "rlib"]
@@ -21,12 +21,9 @@ serde_json = "1.0.67"
 futures = "0.3.21"
 serde = { version = "1.0", features = ["derive"] }
 iri-string = "0.4"
-anyhow = "1.0"
 url = "2.2.2"
 sha2 = "0.10"
 rand = "0.8.4"
-thiserror = "1.0"
-async-trait = "0.1.52"
 chrono = "0.4.19"
 uuid = { version = "0.8", features = ["serde", "v4", "wasm-bindgen"] }
 #  The `console_error_panic_hook` crate provides better debugging of panics by

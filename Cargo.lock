@@ -3170,8 +3170,6 @@ dependencies = [
 name = "workstreams-api"
 version = "0.1.0"
 dependencies = [
- "anyhow",
- "async-trait",
  "cfg-if 0.1.10",
  "chrono",
  "console_error_panic_hook",
@@ -3184,7 +3182,6 @@ dependencies = [
  "serde_json",
  "sha2 0.10.1",
  "siwe",
- "thiserror",
  "url",
  "uuid",
  "worker",
