@@ -93,6 +93,7 @@ impl Authorization {
     /// SIWE::Message. That way, we don't have to deal with stale records, but Cloudflare takes
     /// care of it. After it expires, the token will no longer be usable and the user will have to
     /// Authorize again and use a new token.
+    ///
     pub async fn create(env: &Env, auth: AuthRequest) -> Result<String> {
         let message: Message =
             Message::from_str(&auth.message).map_err(|err| worker::Error::from(err.to_string()))?;
