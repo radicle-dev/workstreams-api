@@ -26,6 +26,7 @@ impl fmt::Display for PaymentCurrency {
 pub struct Application {
     #[serde(default)]
     pub id: String,
+    title: String,
     description: String,
     #[serde(default)]
     workstream_id: String,
@@ -104,7 +105,6 @@ impl Default for WorkstreamState {
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
 pub struct DripsConfig {
-    receivers: Vec<Receiver>,
     drips_acct: u32,
     payment_currency: PaymentCurrency,
     #[serde(skip_deserializing)]
@@ -139,6 +139,7 @@ impl Workstream {
         // update metadata
         old_workstream.description = new_workstream.description;
         old_workstream.wtype = new_workstream.wtype;
+        old_workstream.title = new_workstream.title;
         // update state
         old_workstream.state = new_workstream.state;
         Ok(())
