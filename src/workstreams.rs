@@ -112,6 +112,11 @@ pub struct DripsConfig {
 }
 
 impl Workstream {
+    /// Updates a Workstream instance with the fields from another Workstream instance. We don't
+    /// update all the fields, for security reasons (e.g creator, creation_type).  The
+    /// old_workstream is usually the object retrieved from the KV store and the new_workstream is
+    /// the object passed by the user.
+    ///
     pub fn update(
         old_workstream: &mut Workstream,
         new_workstream: Workstream,
@@ -145,7 +150,16 @@ impl Workstream {
     ) -> Result<bool, worker::Error> {
         Ok(true)
     }
-    // check if dates make sense (e.g created_at is before or at the same time with starting_at)
+    /// Populate a new workstream instance passed by the user. Populate is different from update,
+    /// because here the user creates an incomplete Workstream object (with some fields missing)
+    /// and the API is responsible for populating these fields (like workstream_id, creation_date,
+    /// etc.).
+    ///
+    /// The API is configured to use the official DripsHub contracts, which are usually tied to a
+    /// particular ERC20. The KV store for the address of the dripshubs is populated by the DevOps
+    /// team ahead of deployment. If the API didn't populate this field, the user could pass
+    /// an arbitrary smart contract, with important security implications.
+    ///
     pub async fn populate(
         workstream: &mut Workstream,
         user: &str,
@@ -172,6 +186,8 @@ impl Workstream {
 }
 
 impl Application {
+    /// Populate a new application instance. It follows the same philosphy as
+    /// Workstream::populate().
     pub fn populate(
         application: &mut Application,
         user: &str,
@@ -188,6 +204,7 @@ impl Application {
         Ok(())
     }
 
+    /// Update an application instance. It follows the same philosophy as Workstream::update().
     pub fn update(
         old_application: &Application,
         new_application: &mut Application,
@@ -199,7 +216,8 @@ impl Application {
         Ok(())
     }
 }
-
+/// Performs sanity check to the dates passed to either Workstream or Application
+/// with the following simple rule: `starting_a`t should be before now() and before `ending_at`
 fn check_dates(
     starting_at: &Option<String>,
     ending_at: &Option<String>,

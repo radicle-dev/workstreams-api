@@ -1,0 +1,1 @@
+initSidebarItems({"struct":[["User","Create a user struct to hold the workstreams, in case we want to expand the user information stored in the API."]]});
