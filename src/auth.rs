@@ -9,6 +9,30 @@ use worker::*;
 /// All authentication requests are compromised of two elements:
 /// a) A message that follows EIP4361
 /// b) A signature of said message
+///
+/// EIP4361 Template:
+/// ```
+/// ${domain} wants you to sign in with your Ethereum account:
+/// ${address}
+///
+/// ${statement}
+///
+/// URI: ${uri}
+/// Version: ${version}
+/// Chain ID: ${chain-id}
+/// Nonce: ${nonce}
+/// Issued At: ${issued-at}
+/// Expiration Time: ${expiration-time}
+/// Not Before: ${not-before}
+/// Request ID: ${request-id}
+/// Resources:
+/// - ${resources[0]}
+/// - ${resources[1]}
+/// ...
+/// - ${resources[n]}
+/// ```
+/// Source: [EIP4361](https://eips.ethereum.org/EIPS/eip-4361)
+///
 #[derive(Deserialize, Serialize, Debug)]
 pub struct AuthRequest {
     message: String,

@@ -216,7 +216,8 @@ impl Application {
         Ok(())
     }
 }
-/// Performs sanity check to the dates passed to either Workstream or Application.
+/// Performs sanity check to the dates passed to either Workstream or Application
+/// with the following simple rule: `starting_a`t should be before now() and before `ending_at`
 fn check_dates(
     starting_at: &Option<String>,
     ending_at: &Option<String>,
