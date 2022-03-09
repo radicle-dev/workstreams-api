@@ -64,6 +64,7 @@ impl Default for ApplicationState {
 pub struct Workstream {
     #[serde(default)]
     pub id: String,
+    title: String,
     wtype: WorkstreamType,
     #[serde(default)]
     creator: Address,
