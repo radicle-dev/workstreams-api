@@ -1,0 +1,1 @@
+initSidebarItems({"fn":[["set_panic_hook","Set the `console.error` panic hook the first time this is called. Subsequent invocations do nothing."]]});
