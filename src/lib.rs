@@ -4,9 +4,7 @@ use std::collections::HashMap;
 use std::str::FromStr;
 use users::User;
 use worker::*;
-use workstreams::WorkstreamState;
-
-use crate::workstreams::{Application, Workstream};
+use workstreams::{Application, Workstream, WorkstreamState};
 mod auth;
 mod users;
 mod utils;
@@ -226,7 +224,6 @@ fn parse_query_string(req: &Request) -> Result<HashMap<String, String>> {
 /// ### DELETE
 ///
 /// Deletes the workstream with id = `:workstream` from the KV store of the API.
-///
 ///
 /// ## /api/v1/authorize
 ///

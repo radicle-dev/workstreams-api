@@ -80,9 +80,9 @@ impl Authorization {
             Ok(_) => {
                 let authentication = env.kv("AUTHENTICATION")?;
                 let mut rng = rand::thread_rng();
+                let mut hasher = Sha256::new();
                 let message: Message = Message::from_str(&auth.message)
                     .map_err(|err| worker::Error::from(err.to_string()))?;
-                let mut hasher = Sha256::new();
                 let auth = Authorization {
                     resources: message
                         .resources
@@ -119,10 +119,16 @@ impl Authorization {
         }
     }
 }
-
 impl AuthRequest {
     /// Parses a worker::Request struct for an AuthRequest struct, serialized as a JSON object in
     /// the body of the request.
+    ///
+    /// ```no_run
+    /// let router = Router::new();
+    /// router.post_async("/api/v1/authorize", |req, ctx| async move {
+    /// let auth_req: AuthRequest = AuthRequest::from_req(req).await?;
+    /// }).run(req, ctx).await
+    /// ```
     pub async fn from_req(mut req: Request) -> Result<AuthRequest> {
         let body = req
             .json::<AuthRequest>()
