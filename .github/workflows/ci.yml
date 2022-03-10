@@ -4,7 +4,7 @@ on:
       - master
   pull_request:
 
-name: Linting & Docs
+name: Linting, Docs, Publish
 
 jobs:
   lint:
