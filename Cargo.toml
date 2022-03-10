@@ -13,9 +13,9 @@ default = ["console_error_panic_hook"]
 
 [dependencies]
 cfg-if = "0.1.2"
-ethers =  { git = "https://github.com/odyslam/ethers-rs" , branch = "fix/worker-compile", default-features = false }
-worker =  { git = "https://github.com/cloudflare/workers-rs" }
-siwe = { git = "https://github.com/spruceid/siwe-rs" }
+ethers = "0.6.2"
+worker = "0.0.9"
+siwe = "0.2.0"
 hex = "0.4"
 serde_json = "1.0.67"
 futures = "0.3.21"
