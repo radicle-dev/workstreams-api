@@ -4,7 +4,7 @@ on:
       - master
   pull_request:
 
-name: Linting & Docs
+name: Linting, Docs, Publish
 
 jobs:
   lint:
@@ -32,3 +32,12 @@ jobs:
 
       - name: build docs
         run: ./gen-docs.sh
+
+      - name: Publish
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+        run: npm i @cloudflare/wrangler && npx wrangler publish
+
+      - name: PR new docs
+        uses: stefanzweifel/git-auto-commit-action@v4
+

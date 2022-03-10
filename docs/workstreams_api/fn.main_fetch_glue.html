@@ -1,14 +1,20 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="API schema"><meta name="keywords" content="rust, rustlang, rust-lang, main_fetch_glue"><title>main_fetch_glue in workstreams_api - Rust</title><link rel="stylesheet" type="text/css" href="../normalize.css"><link rel="stylesheet" type="text/css" href="../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../light.css"  id="themeStyle"><link rel="stylesheet" type="text/css" href="../dark.css" disabled ><link rel="stylesheet" type="text/css" href="../ayu.css" disabled ><script id="default-settings" ></script><script src="../storage.js"></script><script src="../crates.js"></script><noscript><link rel="stylesheet" href="../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../favicon.svg"><style type="text/css">#crate-search{background-image:url("../down-arrow.svg");}</style></head><body class="rustdoc fn"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu" role="button">&#9776;</div><a href='../workstreams_api/index.html'><div class='logo-container rust-logo'><img src='../rust-logo.png' alt='logo'></div></a><div class="sidebar-elems"><h2 class="location">Other items in<br><a href="index.html">workstreams_api</a></h2><div id="sidebar-vars" data-name="main_fetch_glue" data-ty="fn" data-relpath=""></div><script defer src="sidebar-items.js"></script></div></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="18" height="18" alt="Pick another theme!" src="../brush.svg"></button><div id="theme-choices" role="menu"></div></div><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../settings.html" title="settings"><img width="18" height="18" alt="Change settings" src="../wheel.svg"></a></div></form></nav><section id="main" class="content"><h1 class="fqn"><span class="in-band">Function <a href="index.html">workstreams_api</a>::<wbr><a class="fn" href="#">main_fetch_glue</a><button id="copy-path" onclick="copy_path(this)" title="Copy item path to clipboard"><img src="../clipboard.svg" width="19" height="18" alt="Copy item path"></button></span><span class="out-of-band"><span id="render-detail"><a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class="inner">&#x2212;</span>]</a></span><a class="srclink" href="../src/workstreams_api/lib.rs.html#301-606" title="goto source code">[src]</a></span></h1><pre class="rust fn"><code>pub async fn main_fetch_glue(<br>&nbsp;&nbsp;&nbsp;&nbsp;req: Request, <br>&nbsp;&nbsp;&nbsp;&nbsp;env: Env, <br>&nbsp;&nbsp;&nbsp;&nbsp;_worker_ctx: Context<br>) -&gt; Result&lt;Response&gt;</code></pre><details class="rustdoc-toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><h1 id="api-schema" class="section-header"><a href="#api-schema">API schema</a></h1><h2 id="apiv1users" class="section-header"><a href="#apiv1users">/api/v1/users</a></h2>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="API schema"><meta name="keywords" content="rust, rustlang, rust-lang, main_fetch_glue"><title>main_fetch_glue in workstreams_api - Rust</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../normalize.css"><link rel="stylesheet" type="text/css" href="../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../dark.css" disabled><link rel="stylesheet" type="text/css" href="../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../storage.js"></script><script src="../crates.js"></script><script defer src="../main.js"></script>
+    <noscript><link rel="stylesheet" href="../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../favicon.svg"></head><body class="rustdoc fn"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../workstreams_api/index.html"><div class="logo-container"><img class="rust-logo" src="../rust-logo.svg" alt="logo"></div>
+        </a><h2 class="location"></h2>
+    </nav>
+    <nav class="sidebar"><a class="sidebar-logo" href="../workstreams_api/index.html"><div class="logo-container"><img class="rust-logo" src="../rust-logo.svg" alt="logo"></div>
+        </a><div class="sidebar-elems"><h2 class="location"><a href="index.html">In workstreams_api</a></h2><div id="sidebar-vars" data-name="main_fetch_glue" data-ty="fn" data-relpath=""></div><script defer src="sidebar-items.js"></script></div></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../workstreams_api/index.html"><img class="rust-logo" src="../rust-logo.svg" alt="logo"></a><nav class="sub"><div class="theme-picker hidden"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="22" height="22" alt="Pick another theme!" src="../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><span></span><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="main-heading">
+    <h1 class="fqn"><span class="in-band">Function <a href="index.html">workstreams_api</a>::<wbr><a class="fn" href="#">main_fetch_glue</a><button id="copy-path" onclick="copy_path(this)" title="Copy item path to clipboard"><img src="../clipboard.svg" width="19" height="18" alt="Copy item path"></button></span></h1><span class="out-of-band"><a class="srclink" href="../src/workstreams_api/lib.rs.html#301-606">source</a> · <a id="toggle-all-docs" href="javascript:void(0)" title="collapse all docs">[<span class="inner">&#x2212;</span>]</a></span></div><div class="docblock item-decl"><pre class="rust fn"><code>pub async fn main_fetch_glue(<br>&nbsp;&nbsp;&nbsp;&nbsp;req: Request, <br>&nbsp;&nbsp;&nbsp;&nbsp;env: Env, <br>&nbsp;&nbsp;&nbsp;&nbsp;_worker_ctx: Context<br>) -&gt; Result&lt;Response&gt;</code></pre></div><details class="rustdoc-toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><h2 id="api-schema"><a href="#api-schema">API schema</a></h2><h3 id="apiv1users"><a href="#apiv1users">/api/v1/users</a></h3>
 <p>The route accepts the following HTTP methods: GET</p>
-<h2 id="get" class="section-header"><a href="#get">GET</a></h2>
+<h3 id="get"><a href="#get">GET</a></h3>
 <p>It returns an array of the addresses of all the users:</p>
 
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code>[
 <span class="string">&quot;0xDFA1fEa9915EF18b1f2A752343b168cA9c9d97aB&quot;</span>
 ]</code></pre></div>
-<h2 id="apiv1workstreams" class="section-header"><a href="#apiv1workstreams">/api/v1/workstreams</a></h2>
+<h3 id="apiv1workstreams"><a href="#apiv1workstreams">/api/v1/workstreams</a></h3>
 <p>The route accepts the following HTTP methods: GET</p>
-<h3 id="get-1" class="section-header"><a href="#get-1">GET</a></h3>
+<h4 id="get-1"><a href="#get-1">GET</a></h4>
 <p>It returns an array of all the workstreams. It accepts a filter based on the state as a query
 string. For example <code>/api/v1/workstreams?state=funded</code>. The accepted states are defined in
 the WorkstreamState enum.</p>
@@ -35,7 +41,7 @@ the WorkstreamState enum.</p>
        <span class="string">&quot;state&quot;</span>: <span class="string">&quot;Open&quot;</span>
    }
 ]</code></pre></div>
-<h3 id="apiv1usersuserworkstreamsworksteamapplications" class="section-header"><a href="#apiv1usersuserworkstreamsworksteamapplications">/api/v1/users/:user/workstreams/:worksteam/applications</a></h3>
+<h4 id="apiv1usersuserworkstreamsworksteamapplications"><a href="#apiv1usersuserworkstreamsworksteamapplications">/api/v1/users/:user/workstreams/:worksteam/applications</a></h4>
 <p>HTTP methods: GET, POST, PUT</p>
 <p>Require Authorization: POST, PUT</p>
 <p>The route accepts the following parameters encoded into the path:</p>
@@ -44,9 +50,9 @@ the WorkstreamState enum.</p>
 <li>workstream</li>
 </ul>
 <p>For example: <code>api/v1/users/0xdfa1fea9915ef18b1f2a752343b168ca9c9d97ab/workstreams/e0173d95-37a6-4089-b127-9eceee95574b/applications</code></p>
-<h3 id="get-2" class="section-header"><a href="#get-2">GET</a></h3>
+<h4 id="get-2"><a href="#get-2">GET</a></h4>
 <p>Returns an array of all Applications of the workstream with id = <code>:worktream</code>.</p>
-<h3 id="post" class="section-header"><a href="#post">POST</a></h3>
+<h4 id="post"><a href="#post">POST</a></h4>
 <p>Creates a new Application for the workstream with id = <code>workstream</code>.</p>
 <p>The application is stored at the KV store of the API.</p>
 <p>The user must pass a json object in the body of the request with a schema that follows the
@@ -67,7 +73,7 @@ as they are populated by the API.</p>
 }
 ],
 }</p>
-<h3 id="put" class="section-header"><a href="#put">PUT</a></h3>
+<h4 id="put"><a href="#put">PUT</a></h4>
 <p>Edits an existing Application by replacing all the fields of the old Application with the ones
 of the new, passed in the body of the request as JSON. The applications are matched by <code>id</code> and
 the following fields do not change:</p>
@@ -76,19 +82,19 @@ the following fields do not change:</p>
 <li>created_at</li>
 <li>creator</li>
 </ul>
-<h2 id="apiv1usersuserworkstreamsworkstreamapplicationsapplication" class="section-header"><a href="#apiv1usersuserworkstreamsworkstreamapplicationsapplication"><code>/api/v1/users/:user/workstreams/:workstream/applications/:application</code></a></h2>
+<h3 id="apiv1usersuserworkstreamsworkstreamapplicationsapplication"><a href="#apiv1usersuserworkstreamsworkstreamapplicationsapplication"><code>/api/v1/users/:user/workstreams/:workstream/applications/:application</code></a></h3>
 <p>HTTP Methods: GET, DELETE</p>
 <p>Required Authorization: DELETE</p>
-<h3 id="get-3" class="section-header"><a href="#get-3">GET</a></h3>
+<h4 id="get-3"><a href="#get-3">GET</a></h4>
 <p>Returns the Application object with id = <code>:application</code></p>
-<h3 id="delete" class="section-header"><a href="#delete">DELETE</a></h3>
+<h4 id="delete"><a href="#delete">DELETE</a></h4>
 <p>Delete the Application object with id = <code>:application</code> from the KV STORE.</p>
-<h2 id="apiv1usersuserworkstreams" class="section-header"><a href="#apiv1usersuserworkstreams">`/api/v1/users/:user/workstreams</a></h2>
+<h3 id="apiv1usersuserworkstreams"><a href="#apiv1usersuserworkstreams">`/api/v1/users/:user/workstreams</a></h3>
 <p>HTTP Methods: GET, POST, PUT</p>
 <p>Required Authorization: POST, PUT</p>
-<h3 id="get-4" class="section-header"><a href="#get-4">GET</a></h3>
+<h4 id="get-4"><a href="#get-4">GET</a></h4>
 <p>Returns all workstreams of the user <code>:user</code>.</p>
-<h3 id="post-1" class="section-header"><a href="#post-1">POST</a></h3>
+<h4 id="post-1"><a href="#post-1">POST</a></h4>
 <p>Creates a new workstream based on the Workstream struct that is passed as a JSON object in the
 body of the request.</p>
 <p>The workstream is saved at the KV store of the worker</p>
@@ -102,7 +108,7 @@ API.</p>
 <li>DripsHub</li>
 <li>state</li>
 </ul>
-<h3 id="put-1" class="section-header"><a href="#put-1">PUT</a></h3>
+<h4 id="put-1"><a href="#put-1">PUT</a></h4>
 <p>Edits an existing workstream and replaces it fields with the ones defined in the workstream
 object that is passed as a JSON in the body of the request.</p>
 <p>The following fields will not change:</p>
@@ -112,14 +118,14 @@ object that is passed as a JSON in the body of the request.</p>
 <li>created_at</li>
 <li>Dripshub</li>
 </ul>
-<h2 id="apiv1usersuserworkstreamsworkstream" class="section-header"><a href="#apiv1usersuserworkstreamsworkstream">`/api/v1/users/:user/workstreams/:workstream</a></h2>
+<h3 id="apiv1usersuserworkstreamsworkstream"><a href="#apiv1usersuserworkstreamsworkstream">`/api/v1/users/:user/workstreams/:workstream</a></h3>
 <p>HTTP Methods: GET, DELETE</p>
 <p>Require Authorization: DELETE</p>
-<h3 id="get-5" class="section-header"><a href="#get-5">GET</a></h3>
+<h4 id="get-5"><a href="#get-5">GET</a></h4>
 <p>Returns the workstream with id = <code>:workstream</code>.</p>
-<h3 id="delete-1" class="section-header"><a href="#delete-1">DELETE</a></h3>
+<h4 id="delete-1"><a href="#delete-1">DELETE</a></h4>
 <p>Deletes the workstream with id = <code>:workstream</code> from the KV store of the API.</p>
-<h2 id="apiv1authorize" class="section-header"><a href="#apiv1authorize">/api/v1/authorize</a></h2>
+<h3 id="apiv1authorize"><a href="#apiv1authorize">/api/v1/authorize</a></h3>
 <p>HTTP Methods: POST</p>
 <p>Required Authorization: None</p>
 <p>It authorizes an ethereum address to the API and generates a token that is returned to the
@@ -173,6 +179,5 @@ was sent and must be renewed using the same mechanism.</p>
 <div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="string">&quot;set-cookie&quot;</span>: <span class="string">&quot;SIWE-AUTH=EACB9E10D0FD122CF0D2BA5F282CEBA0D71B48DD40A04893AAB94D1BE3F16F7D;
 Secure; HttpOnly; SameSite=Lax; Expires=Tue Mar 08 2022 20:51:45 GMT+0000 (Coordinated
 Universal Time)&quot;</span></code></pre></div>
-</div></details></section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../" data-current-crate="workstreams_api" data-search-index-js="../search-index.js" data-search-js="../search.js"></div>
-    <script src="../main.js"></script>
+</div></details></section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../" data-current-crate="workstreams_api" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0-nightly (458262b13 2022-03-09)" ></div>
 </body></html>

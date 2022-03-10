@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "@cloudflare/wrangler": "^1.19.8"
+  }
+}
