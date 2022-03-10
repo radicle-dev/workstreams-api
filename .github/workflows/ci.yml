@@ -32,3 +32,11 @@ jobs:
 
       - name: build docs
         run: ./gen-docs.sh
+
+      - name: PR new docs
+        uses: stefanzweifel/git-auto-commit-action@v4
+
+      - name: publish worker
+        uses: cloudflare/wrangler-action@1.3.0
+        with:
+          apiToken: ${{ secrets.CF_API_TOKEN }}
